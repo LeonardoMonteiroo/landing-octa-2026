@@ -1,0 +1,72 @@
+[
+  {
+    "nome": "regulador-metalico",
+    "aspect": 1.014,
+    "origem": "Ativo 5.png"
+  },
+  {
+    "nome": "fivela-tres-pinos",
+    "aspect": 1.184,
+    "origem": "Ativo 5.png"
+  },
+  {
+    "nome": "ilhos",
+    "aspect": 1.846,
+    "origem": "Ativo 6.png"
+  },
+  {
+    "nome": "argolas-metalicas",
+    "aspect": 1.087,
+    "origem": "Ativo 7.png"
+  },
+  {
+    "nome": "botao-flexivel",
+    "aspect": 1.538,
+    "origem": "Ativo 8.png"
+  },
+  {
+    "nome": "ziper-invisivel",
+    "aspect": 0.921,
+    "origem": "Ativo 9.png"
+  },
+  {
+    "nome": "ziper-metalico",
+    "aspect": 0.593,
+    "origem": "Ativo 10.png"
+  },
+  {
+    "nome": "regulador-sutia",
+    "aspect": 0.716,
+    "origem": "Ativo 11.png"
+  },
+  {
+    "nome": "vies-algodao",
+    "aspect": 0.641,
+    "origem": "Ativo 13.png"
+  },
+  {
+    "nome": "fecho-sutia",
+    "aspect": 0.803,
+    "origem": "Ativo 15.png"
+  },
+  {
+    "nome": "fivela-dois-pinos",
+    "aspect": 1.209,
+    "origem": "Ativo 16.png"
+  },
+  {
+    "nome": "meia-argola",
+    "aspect": 1.06,
+    "origem": "Ativo 17.png"
+  },
+  {
+    "nome": "rebite",
+    "aspect": 1.006,
+    "origem": "Ativo 18.png"
+  },
+  {
+    "nome": "botao-pressao",
+    "aspect": 2.103,
+    "origem": "Ativo 19.png"
+  }
+]

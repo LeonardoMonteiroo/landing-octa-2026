@@ -1,0 +1,208 @@
+---
+/**
+ * Campo de estrelinhas para as paredes de cor chapada.
+ *
+ * Os quatro capítulos pintam uma cor só atrás do conteúdo (resistência,
+ * pertencer, fragilidade, jardim) — no mood e na persona sobra muita parede
+ * lisa em volta das fotos do mural. Esta camada pendura ali as estrelinhas
+ * desenhadas à mão de "estrelas-backgroun-liso.svg" (ver
+ * scripts/extract-estrelas-fundo.mjs), na mesma dispersão do desenho.
+ *
+ * A profundidade vem de três coisas que andam juntas por estrela, todas
+ * derivadas de `--prof`: quem está mais perto é maior, mais opaca e desloca
+ * mais no parallax; quem está no fundo é pequena, apagada e quase parada.
+ *
+ * A cor é sempre `currentColor`, herdada do capítulo — claro sobre o navy e o
+ * vinho, escuro sobre o cinza. É o mesmo truque do anel de foco em tokens.css:
+ * uma regra só serve as quatro paredes.
+ */
+import { estrelasFundo } from "../data/estrelasFundo";
+
+interface Props {
+  /**
+   * Quantas vezes a dispersão se repete na altura da seção. O desenho é quase
+   * quadrado e um capítulo tem duas telas ou mais: com uma faixa só, as
+   * estrelas se esticariam numa coluna rala.
+   */
+  faixas?: number;
+  /** Opacidade da estrela mais próxima. As de trás descem a partir daí. */
+  opacidade?: number;
+  /** Prefixo dos ids do sprite e semente dos giros — um por capítulo. */
+  nome: string;
+}
+
+const { faixas = 2, opacidade = 0.16, nome } = Astro.props;
+
+// Semente estável a partir do nome do capítulo: duas seções vizinhas não saem
+// com os mesmos giros nem com as mesmas estrelas na frente.
+const semente = [...nome].reduce((soma, c) => soma + c.charCodeAt(0), 0);
+
+/**
+ * Profundidade de cada estrela, entre ~0,25 (colada na parede) e ~1 (perto de
+ * quem olha). Passo primo sobre o total para a sequência não cair em ciclo
+ * curto e as vizinhas não saírem na mesma camada.
+ */
+const profundidade = (i: number) => 0.25 + (((i * 7 + semente) % 11) / 11) * 0.75;
+
+/** Giro de repouso, em graus. Mesma ideia: espalhado e sempre igual. */
+const giro = (i: number) => (((i * 37 + semente * 13) % 51) - 25) * 1.1;
+
+const pecas = estrelasFundo.map((e, i) => {
+  const prof = profundidade(i);
+  const [, , caixaLarg, caixaAlt] = e.caixa.split(" ").map(Number);
+  // Tamanho também é profundidade: 0,78× no fundo, 1,18× na frente.
+  const larg = e.larg * (0.78 + 0.4 * prof);
+  return {
+    ...e,
+    // Id de documento, então leva prefixo próprio: `#conceito` já é a seção.
+    id: `estrela-fundo-${nome}-${i}`,
+    prof: prof.toFixed(2),
+    giro: giro(i).toFixed(1),
+    larg: larg.toFixed(2),
+    alt: ((larg * caixaAlt) / caixaLarg).toFixed(2),
+    // Espalha o respiro das estrelas para elas não piscarem em bloco.
+    atraso: (((i * 13 + semente) % 70) / 10).toFixed(1),
+  };
+});
+---
+
+{/* `data-campo` é o id do capítulo, e serve ao script: é por ele que o campo
+    descobre em que altura da página mora, e portanto quando remedir. */}
+<div
+  class="campo-estrelas"
+  data-campo={nome}
+  aria-hidden="true"
+  style={`--opacidade-estrela:${opacidade}`}
+>
+  {/* Sprite: os traços entram uma vez só e cada faixa referencia por <use>,
+      em vez de repetir ~5 kB de path por faixa. */}
+  <svg class="sprite-estrelas" aria-hidden="true" focusable="false">
+    <defs>
+      {pecas.map((p) => <path id={p.id} d={p.traco} />)}
+    </defs>
+  </svg>
+
+  {
+    Array.from({ length: faixas }, (_, f) => (
+      <div class="faixa" style={`top:${(f * 100) / faixas}%; height:${100 / faixas}%; --espelho:${f % 2 ? -1 : 1}`}>
+        {pecas.map((p) => (
+          <svg
+            class="estrela-fundo"
+            viewBox={p.caixa}
+            focusable="false"
+            style={`--x:${p.x}%; --y:${p.y}%; --larg:${p.larg}; --alt:${p.alt}; --prof:${p.prof}; --giro:${p.giro}deg; --atraso:${p.atraso}s`}
+          >
+            <use href={`#${p.id}`} />
+          </svg>
+        ))}
+      </div>
+    ))
+  }
+</div>
+
+<style>
+  /* z-index negativo dentro do `isolate` do capítulo: pinta depois da cor
+     chapada e da textura de linho, antes de todo o conteúdo. Nenhum wrapper
+     precisou entrar em volta do <slot>. */
+  .campo-estrelas {
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    overflow: hidden;
+    pointer-events: none;
+
+    /* Tamanho de um ponto de `--larg` (que vem em % do desenho de origem).
+       Preso por clamp para a estrela não virar adesivo no celular nem sumir na
+       tela larga: ~21px no mínimo, ~36px numa tela de 1440. */
+    --esc: clamp(0.21rem, 0.4vw, 0.5rem);
+    /* Passo do parallax por unidade de `--p` (que anda de -70 a 70). */
+    --un: 0.75px;
+  }
+
+  .sprite-estrelas {
+    position: absolute;
+    width: 0;
+    height: 0;
+    overflow: hidden;
+  }
+
+  .faixa {
+    position: absolute;
+    inset-inline: 0;
+    /* Espelha faixa sim, faixa não: a composição se repete sem a repetição
+       aparecer como fileira. */
+    transform: scaleX(var(--espelho));
+  }
+
+  /* Sem wrapper, e de propósito: `left/top` mais margem negativa fazem a
+     centragem, o que deixa `translate` livre para o parallax e `rotate` livre
+     para o giro. Empilhar os três num `transform` só é o que quebra o `.peca`
+     do painel-conceito (ver CLAUDE.md). */
+  .estrela-fundo {
+    position: absolute;
+    left: var(--x);
+    top: var(--y);
+    width: calc(var(--larg) * var(--esc));
+    height: calc(var(--alt) * var(--esc));
+    margin-left: calc(var(--larg) * var(--esc) / -2);
+    margin-top: calc(var(--alt) * var(--esc) / -2);
+    rotate: var(--giro);
+    translate: 0 calc(var(--p, 0) * var(--prof) * var(--un));
+    /* A opacidade da profundidade vai no preenchimento, não no elemento: a
+       `opacity` fica reservada para o cintilar, senão um sobrescreveria o
+       outro. */
+    fill: currentColor;
+    fill-opacity: calc(var(--opacidade-estrela) * var(--prof));
+    animation: cintilar-fundo var(--dur-ambiente) var(--atraso) ease-in-out infinite alternate;
+  }
+
+  /* Respiro lento, de brilho que vai e volta. Amplitude curta porque a estrela
+     já é discreta: o que se nota é a parede deixar de ser inerte. */
+  @keyframes cintilar-fundo {
+    from {
+      opacity: 0.55;
+    }
+    to {
+      opacity: 1;
+    }
+  }
+
+  /* Bloco próprio, obrigatório: o kill-switch de tokens.css só zera a duração,
+     e um `alternate` parado congelaria no quadro final em vez de no de
+     repouso. */
+  @media (prefers-reduced-motion: reduce) {
+    .estrela-fundo {
+      animation: none;
+      translate: none;
+    }
+  }
+</style>
+
+<script>
+  import { gsap, mm, ScrollTrigger, COM_MOVIMENTO, prioridade } from "../lib/motion";
+
+  // Parallax do campo, no mesmo contrato do painel-conceito: uma escrita de
+  // `--p` por quadro na camada, lida via var() por cada estrela, com o
+  // deslocamento pesado por `--prof`. É o que separa o fundo da parede —
+  // sem isso as estrelas seriam só um padrão impresso nela.
+  mm.add(COM_MOVIMENTO, () => {
+    for (const campo of gsap.utils.toArray<HTMLElement>(".campo-estrelas")) {
+      const escreverP = gsap.quickSetter(campo, "--p");
+
+      ScrollTrigger.create({
+        trigger: campo,
+        start: "top bottom",
+        end: "bottom top",
+        scrub: 0.5,
+        invalidateOnRefresh: true,
+        // Um campo por capítulo, e todos criados no mesmo laço: a ordem de
+        // criação aqui é a do DOM, mas a dos outros componentes é a do bundle.
+        // Cada campo remede na prioridade da seção em que mora.
+        refreshPriority: prioridade[campo.dataset.campo as keyof typeof prioridade] ?? 0,
+        // progresso 0..1 ao longo da passagem inteira -> -70..70, a mesma
+        // escala que o `--p` do painel-conceito usa.
+        onUpdate: (self) => escreverP(((self.progress * 2 - 1) * 70).toFixed(1)),
+      });
+    }
+  });
+</script>

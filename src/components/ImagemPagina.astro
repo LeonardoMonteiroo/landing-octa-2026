@@ -1,0 +1,32 @@
+---
+import { Image } from "astro:assets";
+import { bookImages } from "../lib/bookImages";
+
+interface Props {
+  page: string;
+  alt: string;
+  eager?: boolean;
+  class?: string;
+}
+
+const { page, alt, eager = false, class: className } = Astro.props;
+const src = bookImages[page];
+
+if (!src) {
+  throw new Error(
+    `ImagemPagina: "${page}" não existe em src/assets/book/. Rode "npm run extract:book" para gerar as páginas.`,
+  );
+}
+---
+
+<Image
+  src={src}
+  alt={alt}
+  widths={[480, 900, 1440, 1800]}
+  sizes="100vw"
+  loading={eager ? "eager" : "lazy"}
+  decoding={eager ? "sync" : "async"}
+  format="avif"
+  quality={82}
+  class:list={["mx-auto block h-auto w-full max-w-4xl", className]}
+/>

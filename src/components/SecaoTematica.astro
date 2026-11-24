@@ -1,0 +1,33 @@
+---
+import ImagemPagina from "./ImagemPagina.astro";
+
+interface Props {
+  titulo: string;
+  paginas?: string[];
+  paragrafos?: string[];
+}
+
+const { titulo, paginas, paragrafos } = Astro.props;
+---
+
+<div class="mx-auto max-w-5xl px-6">
+  {
+    paginas?.length ? (
+      <div class:list={["mx-auto grid gap-6", paginas.length > 1 ? "sm:grid-cols-2" : "max-w-2xl"]}>
+        {paginas.map((p) => <ImagemPagina page={p} alt={titulo} class="rounded-sm shadow-md" />)}
+      </div>
+    ) : (
+      <slot name="visual" />
+    )
+  }
+
+  {
+    paragrafos && (
+      <div class="font-conto mx-auto mt-12 flex max-w-xl flex-col gap-5 text-center text-lg leading-relaxed">
+        {paragrafos.map((p, i) => (
+          <p class:list={[i === 0 && "capitular"]}>{p}</p>
+        ))}
+      </div>
+    )
+  }
+</div>

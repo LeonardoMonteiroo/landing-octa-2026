@@ -1,0 +1,231 @@
+---
+/**
+ * Mapa da coleção: os doze croquis em pé no mesmo chão, na ordem do Canva.
+ *
+ * **Fileira única, e isso é medida.** Na tela de 1280×720 uma fileira de doze
+ * deixa cada croqui com ~430px de altura; duas fileiras de seis caberiam com
+ * menos de 300px. Mapa é ver tudo de uma vez, então nada aqui pina nem desliza.
+ *
+ * **A mesma escala para todos.** `--h` é a altura da página do Canva, e cada
+ * croqui ocupa a fração dela que ocupava lá (`altura`, medida). As máscaras têm
+ * tamanhos diferentes e continuam tendo. A largura sai da mesma conta, e por
+ * isso a soma das larguras é o divisor de `--h`: 2,91 de soma, menos a pequena
+ * sobreposição, dá 2,75. Ninguém mede nada em JS.
+ *
+ * **O chão é uma costura**, e os números embaixo são a ordem, que é o conteúdo
+ * do mapa. Em leitor de tela quem conta é o `<ol>`, por isso o número visível é
+ * `aria-hidden`.
+ *
+ * O papel é o `--cor-linho-claro`, o mesmo das Cores: sobre o linho o cinza das
+ * calças da 6 e da 7 perde a forma.
+ *
+ * Camada de baixo: sem JS e com movimento reduzido a fileira já está montada, e
+ * em tela estreita ela rola na horizontal em vez de encolher até virar palito.
+ * Nenhum elemento daqui pode ganhar a utilidade `transition` do Tailwind.
+ */
+import { Image } from "astro:assets";
+import { croquis } from "../data/croquis";
+import { croquisMedidas } from "../data/croquis-medidas";
+
+const arquivos = import.meta.glob<{ default: ImageMetadata }>("../assets/croquis/*.png", {
+  eager: true,
+});
+
+const fileira = croquis.map((c, i) => {
+  const imagem = arquivos[`../assets/croquis/${c.nome}.png`];
+  const medida = croquisMedidas[c.nome];
+  if (!imagem || !medida) throw new Error(`PainelMapa: falta o croqui "${c.nome}"`);
+  return { ...c, ...medida, src: imagem.default, atraso: (i * 0.06).toFixed(2) };
+});
+---
+
+<figure class="painel-mapa relative left-1/2 right-1/2 -mx-[50vw] w-screen">
+  <div class="papel-mapa textura-linho">
+    <h2>Mapa da coleção</h2>
+
+    <div
+      class="lineup"
+      tabindex="0"
+      role="group"
+      aria-label="Os doze croquis da coleção, em ordem"
+      data-lineup
+    >
+      <ol class="fila">
+        {
+          fileira.map((c, i) => (
+            <li
+              class="croqui"
+              data-croqui
+              style={`--altura:${c.altura}; --aspect:${c.aspect}; --atraso:${c.atraso}s`}
+            >
+              <Image
+                src={c.src}
+                alt={c.alt}
+                widths={[180, 360]}
+                sizes="(min-width: 761px) 11vw, 30vw"
+                format="webp"
+                quality={86}
+              />
+              <span class="numero" aria-hidden="true">
+                {i + 1}
+              </span>
+            </li>
+          ))
+        }
+      </ol>
+    </div>
+  </div>
+</figure>
+
+<style>
+  .papel-mapa {
+    background: var(--cor-linho-claro);
+    padding: clamp(1.5rem, 3vw, 2.25rem) clamp(1rem, 2.5vw, 2rem) clamp(2.5rem, 5vw, 4rem);
+  }
+
+  h2 {
+    font-family: var(--font-display);
+    font-size: clamp(1.75rem, 3.4vw, 2.75rem);
+    font-weight: 500;
+    line-height: 1.04;
+    color: var(--cor-resistencia);
+    max-width: 76rem;
+    margin: 0 auto clamp(0.75rem, 1.6vw, 1.25rem);
+  }
+
+  .lineup {
+    container-type: inline-size;
+  }
+
+  /* `svh` é o teto: numa tela baixa a fileira encolhe inteira em vez de entrar
+     embaixo da barra do sumário. Os 13rem são a barra, o letreiro e os números. */
+  .fila {
+    --h: min(calc(100cqw / 2.75), calc(100svh - 13rem));
+    --faixa-numero: 1.9rem;
+    position: relative;
+    display: flex;
+    justify-content: center;
+    align-items: flex-end;
+    width: fit-content;
+    margin: 0 auto;
+    padding: 0;
+    list-style: none;
+  }
+
+  /* A costura em que todos pisam. Atrás dos pés, à altura do fim dos desenhos. */
+  .fila::after {
+    content: "";
+    position: absolute;
+    inset-inline: 0;
+    bottom: var(--faixa-numero);
+    border-bottom: 1.5px dashed var(--cor-resistencia);
+    opacity: 0.7;
+    z-index: -1;
+  }
+
+  .croqui {
+    flex: none;
+    width: calc(var(--h) * var(--altura) * var(--aspect));
+    margin-inline: calc(var(--h) * -0.0075);
+    text-align: center;
+  }
+
+  .croqui :global(img) {
+    display: block;
+    width: 100%;
+    height: calc(var(--h) * var(--altura));
+    object-fit: contain;
+  }
+
+  .numero {
+    display: block;
+    height: var(--faixa-numero);
+    padding-top: 0.45rem;
+    font-family: var(--font-ficha);
+    font-size: 0.95rem;
+    line-height: 1;
+    font-variant-numeric: lining-nums;
+    color: var(--cor-resistencia);
+  }
+
+  /* Abaixo disso a fileira rola: encolher doze croquis numa tela de celular os
+     deixaria com um palmo de largura somando todos. */
+  @media (max-width: 760px) {
+    .lineup {
+      overflow-x: auto;
+    }
+
+    .fila {
+      --h: min(26rem, calc(100svh - 13rem));
+      margin: 0;
+    }
+  }
+</style>
+
+<script>
+  import { gsap, ScrollTrigger, mm, COM_MOVIMENTO, dur, curva, prioridade } from "../lib/motion";
+
+  mm.add(COM_MOVIMENTO, () => {
+    const lineup = document.querySelector<HTMLElement>("[data-lineup]");
+    const pecas = gsap.utils.toArray<HTMLElement>("[data-croqui]");
+    if (!lineup || pecas.length === 0) return;
+
+    // Quem esconde é quem revela, e os dois vivem aqui dentro: no CSS, a fileira
+    // ficaria vazia para sempre se o bundle falhasse.
+    gsap.set(pecas, { opacity: 0, y: 22 });
+
+    const pendentes = new Set(pecas);
+
+    const assentar = (peca: HTMLElement, comCerimonia: boolean) => {
+      if (!pendentes.has(peca)) return;
+      pendentes.delete(peca);
+      olho.unobserve(peca);
+      gsap.to(peca, {
+        opacity: 1,
+        y: 0,
+        duration: comCerimonia ? dur.media : dur.instante,
+        ease: curva.tecido,
+        delay: comCerimonia ? parseFloat(peca.style.getPropertyValue("--atraso")) || 0 : 0,
+        clearProps: "transform",
+      });
+    };
+
+    // A varredura do IntersectionObserver: numa rolagem que salta, uma peça pode
+    // passar de baixo para cima da tela sem aviso nenhum. Ver a armadilha na raiz.
+    const varrer = () => {
+      if (pendentes.size === 0) return;
+      const tela = window.innerHeight;
+      for (const peca of [...pendentes]) {
+        const r = peca.getBoundingClientRect();
+        if (r.bottom < 0) assentar(peca, false);
+        else if (r.top < tela * 0.92) assentar(peca, true);
+      }
+    };
+
+    // IO e não ScrollTrigger na revelação: esta seção vem depois de todos os pins,
+    // e o IO não guarda medida nenhuma que possa nascer adiantada.
+    const olho = new IntersectionObserver(
+      (vistas) => {
+        for (const vista of vistas)
+          if (vista.isIntersecting) assentar(vista.target as HTMLElement, true);
+        varrer();
+      },
+      { rootMargin: "0px 0px -8% 0px", threshold: 0 },
+    );
+    pecas.forEach((p) => olho.observe(p));
+
+    // A segunda rede da varredura. Não anima nada.
+    const rede = ScrollTrigger.create({
+      trigger: lineup,
+      start: "top bottom",
+      end: "bottom top",
+      onUpdate: varrer,
+      refreshPriority: prioridade.mapa,
+    });
+
+    return () => {
+      olho.disconnect();
+      rede.kill();
+    };
+  });
+</script>

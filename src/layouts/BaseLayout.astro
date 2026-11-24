@@ -1,0 +1,74 @@
+---
+import "../styles/tokens.css";
+import Motion from "../components/Motion.astro";
+
+interface Props {
+  title: string;
+  description: string;
+  /** Imagem de compartilhamento, relativa à raiz do site. */
+  imagem?: string;
+}
+
+const { title, description, imagem = "og.jpg" } = Astro.props;
+
+// BASE_URL vem com barra no fim ("/landing-octa-2026/"); tiramos para montar
+// os caminhos sem barra dupla. As URLs de compartilhamento precisam ser
+// absolutas — WhatsApp, Instagram e Twitter não resolvem caminho relativo.
+const base = import.meta.env.BASE_URL.replace(/\/$/, "");
+const canonica = new URL(`${base}/`, Astro.site);
+const ogImagem = new URL(`${base}/${imagem}`, Astro.site);
+---
+
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content={description} />
+    <title>{title}</title>
+    <link rel="canonical" href={canonica} />
+
+    <link rel="icon" href={`${base}/favicon.svg`} type="image/svg+xml" />
+    <link rel="apple-touch-icon" href={`${base}/apple-touch-icon.png`} />
+    {/* A barra do sumário é a primeira coisa no topo: o tom dela é o do linho. */}
+    <meta name="theme-color" content="#c3c3c0" />
+
+    <meta property="og:type" content="website" />
+    <meta property="og:locale" content="pt_BR" />
+    <meta property="og:site_name" content="Triádico" />
+    <meta property="og:title" content={title} />
+    <meta property="og:description" content={description} />
+    <meta property="og:url" content={canonica} />
+    <meta property="og:image" content={ogImagem} />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta
+      property="og:image:alt"
+      content="Capa do book Triádico: ilustração de fios, mãos e cães entrelaçados, com o título e o nome de Vitória Baratto."
+    />
+
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content={title} />
+    <meta name="twitter:description" content={description} />
+    <meta name="twitter:image" content={ogImagem} />
+
+    {/* Único lugar autorizado a esconder conteúdo (ver regras em CLAUDE.md).
+        Inline e síncrono para rodar antes do primeiro paint, e condicionado a
+        no-preference — quem pediu menos movimento nunca recebe a classe. O
+        setTimeout é o watchdog: se o bundle de movimento falhar, a abertura
+        aparece mesmo assim em 3 s. */}
+    <script is:inline>
+      if (matchMedia("(prefers-reduced-motion: no-preference)").matches) {
+        document.documentElement.classList.add("pre-anima");
+        setTimeout(function () {
+          document.documentElement.classList.remove("pre-anima");
+        }, 3000);
+      }
+    </script>
+  </head>
+  <body>
+    <a class="pular-para-conteudo" href="#conteudo">Pular para o book</a>
+    <slot />
+    <Motion />
+  </body>
+</html>

@@ -1,0 +1,260 @@
+---
+/**
+ * A cartela: as seis cores da Triádico, cada uma como o novelo da prancha
+ * original puxando uma barra de cor que carrega o nome e o código Pantone.
+ *
+ * O novelo é desenhado uma vez só, num <defs>, e as seis linhas o reaproveitam
+ * por <use>. A cor entra por custom property: propriedade customizada é
+ * herdada, então o --cor posto no <li> atravessa a árvore-sombra do <use> e
+ * chega no fill="var(--cor)" do path. É o que permite ter um desenho e seis
+ * cores em vez de seis desenhos.
+ *
+ * A barra é HTML, e não SVG: ela precisa esticar com a página e levar texto
+ * dentro. O encaixe entre as duas peças não é chutado — `novelo.barra` e
+ * `novelo.disco` saem medidos do arquivo original por
+ * scripts/extract-cores.mjs, e toda a geometria da linha é escrita em múltiplos
+ * de `--un`, um passo do sistema de coordenadas do novelo. Mexer em `--un`
+ * reescala a linha inteira junto: desenho, barra, mordida e tipografia.
+ *
+ * As linhas alternam de lado a cada duas, como na prancha. O zigue-zague é o
+ * que faz as seis lerem como fio estendido em vez de tabela.
+ */
+import { cores } from "../data/cores";
+import { novelo } from "../data/formas-cores";
+
+const { largura, altura, barra, disco } = novelo;
+
+/** A tinta de cada barra, medida em src/data/cores.ts. */
+const tintas = { papel: "var(--cor-linho-claro)", ruptura: "var(--cor-ruptura)" } as const;
+---
+
+<ul
+  class="cartela"
+  data-cartela
+  style={`--larg:${largura}; --alt:${altura}; --bx:${barra.x}; --by:${barra.y}; --bh:${barra.altura}; --dcx:${disco.cx}; --dcy:${disco.cy}; --dr:${disco.r};`}
+>
+  {
+    cores.map((c, i) => (
+      <li
+        class="fio"
+        data-fio
+        data-lado={Math.floor(i / 2) % 2 === 1 ? "direita" : "esquerda"}
+        style={`--cor:${c.hex}; --tinta:${tintas[c.tinta]}`}
+      >
+        <svg class="novelo" viewBox={`0 0 ${largura} ${altura}`} aria-hidden="true" focusable="false">
+          <use href="#forma-novelo" />
+        </svg>
+        <p class="barra">
+          <span class="nome">{c.nome}</span>
+          <span class="tcx">{c.tcx} TCX</span>
+        </p>
+      </li>
+    ))
+  }
+</ul>
+
+{/* O desenho, uma vez. Sem tamanho e fora do fluxo: só serve de fonte pro <use>. */}
+<svg class="molde" aria-hidden="true" focusable="false">
+  <defs>
+    <g id="forma-novelo">
+      {
+        novelo.camadas.map((camada) => (
+          <path transform={`translate(${camada.dx} ${camada.dy})`} d={camada.d} fill="var(--cor)" />
+        ))
+      }
+    </g>
+  </defs>
+</svg>
+
+<style>
+  .molde {
+    position: absolute;
+    width: 0;
+    height: 0;
+    overflow: hidden;
+  }
+
+  .cartela {
+    /* Um passo do sistema de coordenadas do novelo (229,66 × 107,8). Toda a
+       geometria abaixo é múltiplo disto, então a linha reescala inteira.
+       A conta da parte variável: ~0,62px a 375px de tela e ~0,92px a 1280px,
+       o que dá linhas de 67px a 99px de altura. */
+    --un: clamp(0.6px, calc(0.5px + 0.033vw), 0.95px);
+
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: calc(var(--un) * 26);
+  }
+
+  .fio {
+    position: relative;
+    height: calc(var(--alt) * var(--un));
+    color: var(--tinta);
+
+    /* O eixo do movimento: 0 é o repouso (novelo na borda, barra inteira) e 1 é
+       o fio enrolado (novelo na ponta de dentro, barra num toco atrás dele).
+       Quem escreve é o GSAP; o desenho, o recorte da barra e a mordida do disco
+       leem os três daqui, e é isso que os mantém casados quadro a quadro. O
+       valor de repouso mora no CSS: sem JS, nada fica escondido. */
+    --r: 0;
+
+    /* A barra e o novelo medem o percurso em cqw, então a linha é o contêiner. */
+    container-type: inline-size;
+  }
+
+  /* O quanto o novelo já andou. O percurso vai da ponta de dentro do fio até a
+     borda, parando rente aos dois lados. Declarado nos filhos, e não no .fio —
+     um contêiner não se consulta a si mesmo, e ali o 100cqw mediria a caixa de
+     fora. */
+  .novelo,
+  .barra {
+    --anda: calc(var(--r) * (100cqw - var(--larg) * var(--un)));
+  }
+
+  .novelo {
+    position: absolute;
+    top: 0;
+    height: 100%;
+    width: calc(var(--larg) * var(--un));
+  }
+
+  .barra {
+    position: absolute;
+    top: calc(var(--by) * var(--un));
+    height: calc(var(--bh) * var(--un));
+    margin: 0;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: calc(var(--un) * 20);
+    background: var(--cor);
+
+    /* A folga redonda onde o novelo encaixa. Na prancha ela é um disco branco
+       por cima da barra; aqui é buraco de verdade na máscara, para o fundo da
+       seção aparecer através dela em vez de um branco chapado. --dx é negativo
+       (o centro do disco cai um pouco antes da barra começar), e é por isso que
+       ele entra somando no recuo do texto e subtraindo na borda espelhada.
+       A mordida caminha junto com o novelo (o --anda nas duas fórmulas): as
+       linhas do desenho são vazadas, e sem o buraco embaixo dele a barra
+       preencheria os vãos e o novelo viraria um borrão no meio do caminho. */
+    --dx: calc((var(--dcx) - var(--bx)) * var(--un));
+    --dy: calc((var(--dcy) - var(--by)) * var(--un));
+    --raio: calc(var(--dr) * var(--un));
+
+    /* Nenhuma transition aqui, nem utilitária: esta barra é alvo de GSAP. */
+  }
+
+  .nome {
+    font-family: var(--font-display);
+    font-size: calc(var(--un) * 27);
+    line-height: 1;
+    letter-spacing: -0.01em;
+  }
+
+  .tcx {
+    font-family: var(--font-ficha);
+    font-size: calc(var(--un) * 18);
+    line-height: 1;
+    font-variant-numeric: tabular-nums;
+    letter-spacing: 0.06em;
+    opacity: 0.72;
+    white-space: nowrap;
+  }
+
+  /* ── Novelo à esquerda, barra puxada para a direita ─────────────────────── */
+  .fio[data-lado="esquerda"] .novelo {
+    left: 0;
+    /* `translate:`, e não `transform:` — a linha espelhada guarda o espelho no
+       transform, e as duas propriedades precisam conviver. Regra do .peca. */
+    translate: var(--anda) 0;
+  }
+
+  .fio[data-lado="esquerda"] .barra {
+    left: calc(var(--bx) * var(--un));
+    right: 0;
+    /* Presa na ponta de dentro, cresce para fora no rastro do novelo. */
+    clip-path: inset(0 0 0 var(--anda));
+    /* Recuo que tira o texto de dentro da mordida do disco. */
+    padding-left: calc(var(--raio) + var(--dx) + var(--un) * 14);
+    padding-right: calc(var(--un) * 24);
+    mask-image: radial-gradient(
+      circle at calc(var(--dx) + var(--anda)) var(--dy),
+      transparent var(--raio),
+      #000 calc(var(--raio) + 0.5px)
+    );
+  }
+
+  /* ── Novelo à direita: a linha espelhada, como as duas do meio da prancha ── */
+  .fio[data-lado="direita"] .novelo {
+    right: 0;
+    /* O espelho mora no <svg>, que o GSAP não toca. Mesma regra do .peca e do
+       .gira: não empilhar transform de motor em cima de transform de CSS. */
+    transform: scaleX(-1);
+    /* O translate é aplicado fora do espelho, então o sinal é o do desenho. */
+    translate: calc(var(--anda) * -1) 0;
+  }
+
+  .fio[data-lado="direita"] .barra {
+    right: calc(var(--bx) * var(--un));
+    left: 0;
+    flex-direction: row-reverse;
+    clip-path: inset(0 var(--anda) 0 0);
+    padding-right: calc(var(--raio) + var(--dx) + var(--un) * 14);
+    padding-left: calc(var(--un) * 24);
+    mask-image: radial-gradient(
+      circle at calc(100% - var(--dx) - var(--anda)) var(--dy),
+      transparent var(--raio),
+      #000 calc(var(--raio) + 0.5px)
+    );
+  }
+</style>
+
+<script>
+  import { gsap, mm, dur, curva, COM_MOVIMENTO, prioridade } from "../lib/motion";
+
+  /**
+   * O único movimento da seção: o novelo desenrola a própria cor. Cada linha
+   * começa com o fio enrolado — o novelo na ponta de dentro e a barra num toco
+   * atrás dele — e o novelo caminha até a borda deixando a cor estendida no
+   * rastro. Uma linha atrás da outra.
+   *
+   * O GSAP anima uma coisa só: o `--r` do <li>, de 1 a 0. O deslocamento do
+   * desenho, o recorte da barra e o lugar da mordida do disco saem todos dele
+   * no CSS, o que garante que não se descolem no meio do caminho — e deixa o
+   * lado (o zigue-zague do data-lado) escrito uma vez só, no markup, como o
+   * Mural faz com o data-giro. Nada de transform do GSAP no <svg>: a linha
+   * espelhada já usa o dela.
+   *
+   * É fromTo, e não from, de propósito. O `from` lê o estado de repouso no
+   * primeiro frame do tween, e é aí que a leitura sai errada se houver
+   * transição de CSS em curso — foi assim que o botão "Começar a leitura" sumiu
+   * para sempre. Com fromTo os dois extremos são explícitos e não há leitura.
+   */
+  mm.add(COM_MOVIMENTO, () => {
+    const cartela = document.querySelector<HTMLElement>("[data-cartela]");
+    const fios = gsap.utils.toArray<HTMLElement>("[data-fio]");
+    if (!cartela || !fios.length) return;
+
+    gsap.fromTo(
+      fios,
+      { "--r": 1 },
+      {
+        "--r": 0,
+        duration: dur.lenta,
+        ease: curva.fio,
+        stagger: 0.09,
+        // Devolve o repouso ao CSS quando termina.
+        clearProps: "--r",
+        scrollTrigger: {
+          trigger: cartela,
+          start: "top 78%",
+          once: true,
+          refreshPriority: prioridade.cores,
+        },
+      },
+    );
+  });
+</script>

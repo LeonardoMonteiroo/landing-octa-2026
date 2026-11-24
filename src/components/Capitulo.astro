@@ -1,0 +1,37 @@
+---
+import CampoEstrelas from "./CampoEstrelas.astro";
+
+interface Props {
+  id: string;
+  titulo: string;
+  fundo: "linho" | "resistencia" | "pertencer" | "jardim" | "fragilidade" | "ruptura";
+  /** Desliga o campo de estrelinhas do fundo, se um dia a parede for imagem. */
+  estrelas?: boolean;
+  class?: string;
+}
+
+const { id, titulo, fundo, estrelas = true, class: className } = Astro.props;
+
+const fundoClasses: Record<Props["fundo"], string> = {
+  linho: "bg-linho text-resistencia",
+  resistencia: "bg-resistencia text-linho-claro",
+  pertencer: "bg-pertencer text-linho-claro",
+  jardim: "bg-jardim text-linho-claro",
+  fragilidade: "bg-fragilidade text-resistencia",
+  ruptura: "bg-ruptura text-linho-claro",
+};
+---
+
+{/* `isolate` é o que dá sentido ao z-index negativo do campo de estrelinhas:
+    sem um contexto de empilhamento aqui, a camada afundaria atrás da cor da
+    seção (e da página) em vez de ficar entre a parede e o conteúdo. */}
+<section
+  id={id}
+  data-capitulo
+  data-titulo={titulo}
+  class:list={["relative isolate scroll-mt-24 textura-linho", fundoClasses[fundo], className]}
+  aria-label={titulo}
+>
+  {estrelas && <CampoEstrelas nome={id} />}
+  <slot />
+</section>

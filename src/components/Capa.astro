@@ -1,0 +1,133 @@
+---
+import { Image } from "astro:assets";
+import fios from "../assets/recortes/raster/ilustracao-fios-maos-caes.jpeg";
+import Estrela from "./Estrela.astro";
+---
+
+<div id="capa" class="relative flex min-h-[100svh] scroll-mt-24 items-center justify-center overflow-hidden bg-linho">
+  <Image
+    src={fios}
+    alt="Ilustração de fios, mãos e cachorros entrelaçados, motivo recorrente do book"
+    widths={[640, 1080, 1600]}
+    sizes="100vw"
+    loading="eager"
+    fetchpriority="high"
+    format="avif"
+    quality={95}
+    data-capa-fundo
+    class="absolute inset-0 h-full w-full object-contain sm:object-cover"
+  />
+  <div
+    class="absolute inset-0 bg-[radial-gradient(120%_90%_at_50%_45%,rgba(3,4,5,0.48)_0%,rgba(3,4,5,0.65)_60%,rgba(3,4,5,0.74)_100%)]"
+    aria-hidden="true"
+  >
+  </div>
+
+  <div class="relative flex flex-col items-center gap-6 px-6 text-center text-linho-claro">
+    <Estrela pontas={8} tamanho={96} data-capa-estrela class="text-ninho drop-shadow-[0_2px_6px_rgba(0,0,0,0.5)]" />
+    <div>
+      <p data-capa-linha class="font-ficha text-xs uppercase tracking-[0.35em] opacity-90">Book digital · coleção</p>
+      <h1 data-capa-titulo class="font-display mt-3 text-6xl tracking-wide sm:text-8xl">Triádico</h1>
+    </div>
+    <p data-capa-linha class="font-conto max-w-md text-base italic opacity-95 sm:text-lg">
+      Essa é a história de uma que se multiplicava em três — e de três que sempre retornavam à mesma origem.
+    </p>
+    <p data-capa-linha class="font-ficha text-xs uppercase tracking-[0.25em] opacity-90">Vitória Baratto · 8ª fase · Bacharelado em Moda · UDESC</p>
+    {/* transition-colors, não transition: o hover só muda cor, e o `transition`
+        largo do Tailwind inclui opacity — era o que fazia o GSAP ler a
+        opacidade deste <a> no meio da transição de CSS (ainda 0, no instante
+        em que a classe pre-anima sai) e gravar 0 como valor final do from(). */}
+    <a
+      data-capa-linha
+      href="#conceito"
+      class="font-ficha mt-4 rounded-full border border-linho-claro/70 px-6 py-2 text-xs uppercase tracking-[0.2em] transition-colors hover:bg-linho-claro hover:text-ruptura"
+    >
+      Começar a leitura
+    </a>
+  </div>
+</div>
+
+<script>
+  import { gsap, mm, SplitText, COM_MOVIMENTO, dur, curva, prioridade } from "../lib/motion";
+
+  mm.add(COM_MOVIMENTO, () => {
+    const capa = document.getElementById("capa");
+    const titulo = capa?.querySelector<HTMLElement>("[data-capa-titulo]");
+
+    // Se a capa não existir, ninguém vai tirar a classe pre-anima — e a
+    // abertura ficaria invisível até o watchdog de 3 s do BaseLayout.
+    if (!capa || !titulo) {
+      document.documentElement.classList.remove("pre-anima");
+      return;
+    }
+
+    const abertura = gsap.timeline({
+      defaults: { ease: curva.fio },
+      // Quem esconde é quem revela: assim que a linha começa, a classe sai e
+      // o GSAP passa a ser a única fonte de verdade da opacidade.
+      onStart: () => document.documentElement.classList.remove("pre-anima"),
+    });
+
+    abertura
+      .from("[data-capa-estrela]", {
+        scale: 0.4,
+        rotate: -120,
+        // autoAlpha só aqui: a Estrela já é aria-hidden em Estrela.astro.
+        autoAlpha: 0,
+        duration: dur.lenta,
+        ease: "back.out(1.6)",
+      })
+      .from(
+        "[data-capa-linha]",
+        { y: 18, opacity: 0, duration: dur.media, stagger: 0.12 },
+        0.55,
+      );
+
+    // O corte só fica certo depois das fontes variáveis carregarem: com três
+    // @fontsource, cortar contra as métricas do fallback deixa as letras fora
+    // de lugar em conexão lenta. autoSplit refaz o corte e re-sincroniza a
+    // animação sozinho — por isso o tween nasce dentro do onSplit.
+    SplitText.create(titulo, {
+      type: "chars",
+      // Cada letra ganha um invólucro com overflow: clip, então o yPercent
+      // lê como uma subida de dentro do bloco de texto, em vez de as letras
+      // passarem por cima da linha de cima.
+      mask: "chars",
+      smartWrap: true,
+      autoSplit: true,
+      // aria-label no <h1>, aria-hidden nos pedaços: o único h1 da página
+      // continua sendo anunciado como "Triádico".
+      aria: "auto",
+      onSplit(self) {
+        return gsap.from(self.chars, {
+          yPercent: 110,
+          duration: dur.lenta,
+          ease: curva.tecido,
+          stagger: 0.045,
+        });
+      },
+    });
+
+    // Parallax leve do fundo enquanto a capa sai de cena.
+    gsap.to("[data-capa-fundo]", {
+      yPercent: 10,
+      ease: "none",
+      scrollTrigger: {
+        trigger: capa,
+        start: "top top",
+        end: "bottom top",
+        scrub: true,
+        refreshPriority: prioridade.capa,
+      },
+    });
+  });
+</script>
+
+<style>
+  /* O h1 tem tracking-wide; sem isto o kerning dá um salto visível no
+     instante em que o SplitText separa as letras. */
+  h1[data-capa-titulo] {
+    font-kerning: none;
+    text-rendering: optimizeSpeed;
+  }
+</style>

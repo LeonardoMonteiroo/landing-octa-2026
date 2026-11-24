@@ -1,0 +1,316 @@
+---
+/**
+ * Recomposição do painel-conceito (página 09 do book) a partir dos
+ * recortes originais do zip de referência, em vez do scan achatado:
+ * o xadrez de retalhos como fundo, com as três estrelas de tecido (as
+ * três cores da paleta Triádico) e as três "velinhas" (bonecas de papel
+ * de lenço xadrez) flutuando por cima, com leve parallax no scroll.
+ * Ver scripts/extract-svg-assets.mjs para a extração das peças.
+ */
+import { Image } from "astro:assets";
+import fundo from "../assets/recortes/raster/avental-xadrez.jpeg";
+import jornal from "../assets/recortes/raster/jornal-recortado.png";
+import { recorte } from "../lib/recortes";
+
+interface Props {
+  /** Trecho do conto, sobreposto no rodapé do painel (ver index.astro). */
+  paragrafos?: string[];
+}
+
+const { paragrafos = [] } = Astro.props;
+
+interface Estrela {
+  arq: string;
+  centro: number; // centro horizontal, em % da largura do painel (mesmo eixo das velinhas)
+  topo: number; // posição, em % da altura da faixa de xadrez (o que sobra acima do jornal)
+  larg: number; // largura, em unidades --esc (ver o <style>) — a altura segue o aspect do svg
+  giro: number; // graus
+  prof: number; // fator de parallax (0 = parado, 1 = desloca mais)
+  alt: string;
+}
+
+interface Velinha {
+  arq: string;
+  centro: number; // centro horizontal, em % da largura do jornal
+  topo: number; // em % da altura do jornal (negativo = cabeça acima do papel)
+  altura: number; // em % da altura do jornal — a largura segue o aspect do svg
+  atras?: boolean; // fica atrás do jornal: a borda rasgada cobre a parte de baixo
+  giro: number;
+  prof: number;
+  alt: string;
+}
+
+// Posições tiradas da página original do book, em coordenadas do próprio
+// recorte de jornal (é o mesmo papel rasgado da referência), para que cada
+// velinha fique no mesmo lugar em relação à borda rasgada. O jornal ocupa a
+// largura inteira do painel, então `centro` também é % da largura do painel —
+// é o eixo que as estrelas reaproveitam.
+const velinhas: Velinha[] = [
+  { arq: "velinha-navy.svg", centro: 20, topo: -8, altura: 78, atras: true, giro: -2, prof: 0.2, alt: "Boneca de papel com lenço de tecido xadrez azul-marinho" },
+  { arq: "velinha-vermelha.svg", centro: 46.4, topo: 25, altura: 70, giro: 1, prof: 0.1, alt: "Boneca de papel com lenço de tecido xadrez vermelho" },
+  { arq: "velinha-verde.svg", centro: 81.9, topo: -7, altura: 92, giro: 3, prof: 0.2, alt: "Boneca de papel com lenço de tecido xadrez verde" },
+];
+
+/** Eixo vertical da velinha de uma cor, para pendurar a estrela em cima dela. */
+const eixo = (cor: string) => velinhas.find((v) => v.arq.includes(cor))!.centro;
+
+// Cada estrela fica no eixo da velinha da mesma cor: os três pares do Triádico,
+// um por coluna. `topo` é % da altura da faixa de xadrez — o que sobra acima do
+// jornal. Em tela larga a faixa encolhe e a cabeça da velinha verde sobe até o
+// meio dela; por isso as estrelas são pregadas ANTES do jornal no HTML, e quem
+// encosta numa boneca passa por trás dela, como um recorte pregado no avental.
+const estrelas: Estrela[] = [
+  { arq: "estrela-navy.svg", centro: eixo("navy"), topo: 16, larg: 19.2, giro: 14, prof: 0.7, alt: "Estrela recortada em tecido xadrez azul-marinho" },
+  { arq: "estrela-vinho.svg", centro: eixo("vermelha"), topo: 38, larg: 33, giro: -3, prof: 0.5, alt: "Estrela recortada em tecido xadrez vinho" },
+  { arq: "estrela-oliva.svg", centro: eixo("verde"), topo: 18, larg: 21.6, giro: -7, prof: 0.7, alt: "Estrela recortada em tecido xadrez verde-oliva" },
+];
+---
+
+{/* O teto é a tela **menos a barra do sumário** (6rem, o mesmo `scroll-mt-24`
+    das seções). Com `max-h-screen` o painel media a tela inteira, e numa tela
+    de 720 a legenda do conto — que mora no pé dele — caía embaixo da barra
+    quando se chegava aqui pela âncora. */}
+<figure class="painel-conceito relative left-1/2 right-1/2 -mx-[50vw] aspect-[3/4] max-h-[calc(100svh-6rem)] w-screen overflow-hidden shadow-lg [container-type:size]">
+  <Image
+    src={fundo}
+    alt=""
+    widths={[640, 1080, 1600, 1920]}
+    sizes="100vw"
+    format="avif"
+    quality={88}
+    data-fundo-conceito
+    class="absolute inset-0 h-full w-full object-cover"
+  />
+  <div class="grupo-decorativo absolute inset-x-0 top-0 h-[var(--faixa-xadrez)]">
+    {
+      estrelas.map((p, i) => (
+        <div
+          class="absolute flex justify-center"
+          data-peca-conceito="estrela"
+          style={`left:${p.centro}%; top:${p.topo}%; width:0`}
+        >
+          <img
+            class="peca block max-w-none shrink-0"
+            src={recorte(p.arq)}
+            alt={p.alt}
+            loading="lazy"
+            decoding="async"
+            style={`width:calc(${p.larg} * var(--esc)); --giro:${p.giro}deg; --prof:${p.prof}; --atraso:${(i * 0.7).toFixed(1)}s`}
+          />
+        </div>
+      ))
+    }
+  </div>
+  <div data-jornal-camada class="jornal-camada absolute bottom-0 left-0 isolate h-[var(--altura-jornal)] w-full">
+    <Image
+      src={jornal}
+      alt=""
+      widths={[640, 1080, 1600, 1920, 2506]}
+      sizes="100vw"
+      format="webp"
+      quality={82}
+      class="jornal absolute inset-0 z-[1] h-full w-full object-fill"
+    />
+    {
+      velinhas.map((v, i) => (
+        <div
+          class="absolute flex justify-center"
+          data-peca-conceito="velinha"
+          style={`left:${v.centro}%; top:${v.topo}%; height:${v.altura}%; width:0; z-index:${v.atras ? 0 : 2}`}
+        >
+          <img
+            class="peca h-full w-auto max-w-none shrink-0"
+            src={recorte(v.arq)}
+            alt={v.alt}
+            loading="lazy"
+            decoding="async"
+            style={`--giro:${v.giro}deg; --prof:${v.prof}; --atraso:${((estrelas.length + i) * 0.7).toFixed(1)}s`}
+          />
+        </div>
+      ))
+    }
+  </div>
+  {
+    paragrafos.length > 0 && (
+      <div class="texto-painel absolute inset-x-0 bottom-0 z-10 flex justify-center px-[6cqw] pb-[5cqh] pt-[16cqh]">
+        <div data-texto-conceito class="font-conto text-linho-claro flex max-w-2xl flex-col gap-4 text-center">
+          {paragrafos.map((p) => (
+            <p>{p}</p>
+          ))}
+        </div>
+      </div>
+    )
+  }
+  <figcaption class="sr-only">Painel de conceito: retalhos de tecido xadrez, três estrelas de tecido e três bonecas de papel com lenço.</figcaption>
+</figure>
+
+<style>
+  .painel-conceito {
+    /* Jornal: 62–75% da altura do painel, esticando no máximo 1.45× na largura
+       em telas largas e sem nunca cortar as laterais em telas estreitas. */
+    --altura-jornal: min(clamp(62cqh, calc(100cqw / 2.78), 75cqh), calc(100cqw / 1.9174));
+    /* O xadrez que sobra acima do papel — é o palco das estrelas. */
+    --faixa-xadrez: calc(100cqh - var(--altura-jornal));
+    /* Unidade de tamanho das estrelas. Em tela estreita elas seguem a largura
+       do painel, como na página do book; em tela larga, quem encolhe é a faixa,
+       então é ela que manda. 45 é a proporção faixa/largura em que as duas se
+       cruzam. As cq* resolvem no elemento que usa --esc, sempre dentro do
+       [container-type:size] deste <figure>. */
+    --esc: min(1cqw, calc(var(--faixa-xadrez) / 45));
+  }
+
+  /* A faixa de xadrez encolhe muito mais que o painel: em 16:9 ela é um terço
+     do que é em retrato. O parallax das estrelas anda na mesma escala das
+     estrelas (--esc) em vez de px fixos, senão o deslocamento que é discreto em
+     retrato joga a estrela para fora da faixa na tela larga. 0.13 é o que
+     devolve ~1px por unidade de --p numa tela cheia de 16:10. */
+  .grupo-decorativo {
+    --un: calc(var(--esc) * 0.13);
+  }
+
+  .jornal {
+    filter: drop-shadow(0 -0.15rem 0.35rem rgb(0 0 0 / 0.35));
+  }
+
+  /* Sombra que sobe do rodapé do painel para o texto do conto ficar legível
+     por cima do jornal claro, sem tapar as velinhas. O tom é o Resistência
+     escurecido, para a transição não parecer um cinza fotográfico. */
+  .texto-painel {
+    background: linear-gradient(
+      to top,
+      rgb(14 5 6 / 0.93) 0%,
+      rgb(14 5 6 / 0.85) 38%,
+      rgb(14 5 6 / 0.48) 72%,
+      rgb(14 5 6 / 0) 100%
+    );
+  }
+
+  .texto-painel p {
+    font-size: clamp(0.72rem, 1.85cqw, 1.02rem);
+    line-height: 1.6;
+    text-shadow: 0 0.08em 0.3em rgb(0 0 0 / 0.75);
+    text-wrap: pretty;
+  }
+
+  .peca {
+    rotate: var(--giro);
+    translate: 0 calc(var(--p, 0) * var(--prof) * var(--un, 1px));
+    filter: drop-shadow(0.25rem 0.4rem 0.35rem rgb(0 0 0 / 0.38));
+    animation: flutuar 7s var(--atraso) ease-in-out infinite alternate;
+    will-change: transform;
+  }
+
+  @keyframes flutuar {
+    from {
+      transform: translateY(-0.6%);
+    }
+    to {
+      transform: translateY(0.6%);
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .peca {
+      animation: none;
+      translate: none;
+    }
+  }
+</style>
+
+<script>
+  import { gsap, mm, ScrollTrigger, COM_MOVIMENTO, dur, curva, prioridade } from "../lib/motion";
+
+  // Parallax sutil: cada peça desloca proporcionalmente à sua profundidade
+  // enquanto o painel atravessa a viewport. O contrato com o CSS é o mesmo de
+  // antes — uma escrita de --p por frame no <figure>, lida via var() por cada
+  // .peca — só que agora derivada do progresso do ScrollTrigger, sem um
+  // getBoundingClientRect() por quadro (que forçava reflow síncrono).
+  mm.add(COM_MOVIMENTO, () => {
+    for (const painel of gsap.utils.toArray<HTMLElement>(".painel-conceito")) {
+      // Entrada: o painel se monta na ordem em que a colagem foi feita —
+      // o avental assenta, o jornal é posto por cima, as estrelas são
+      // pregadas, as velinhas entram em cena e o conto aparece por último.
+      //
+      // Tudo acontece nos wrappers, nunca no .peca: aquele elemento já usa
+      // rotate/translate no CSS (giro e parallax) e transform no @keyframes
+      // flutuar, então qualquer transform do GSAP ali brigaria com os dois.
+      // clearProps devolve o repouso ao CSS e desfaz o contexto de empilhamento
+      // criado pelo transform — o que importa para a velinha que fica ATRÁS
+      // da borda rasgada do jornal.
+      const entrada = gsap.timeline({
+        defaults: { ease: curva.tecido },
+        scrollTrigger: {
+          trigger: painel,
+          start: "top 78%",
+          once: true,
+          refreshPriority: prioridade.conceito,
+        },
+      });
+
+      entrada
+        .from(painel.querySelector("[data-fundo-conceito]"), {
+          scale: 1.07,
+          duration: dur.lenta * 1.5,
+          ease: curva.agulha,
+        }, 0)
+        .from(painel.querySelector("[data-jornal-camada]"), {
+          yPercent: 16,
+          opacity: 0,
+          duration: dur.lenta,
+        }, 0.12)
+        .from(painel.querySelectorAll('[data-peca-conceito="estrela"]'), {
+          opacity: 0,
+          scale: 0.68,
+          rotate: -24,
+          duration: dur.lenta,
+          stagger: 0.14,
+          clearProps: "transform,opacity",
+        }, 0.3)
+        .from(painel.querySelectorAll('[data-peca-conceito="velinha"]'), {
+          opacity: 0,
+          yPercent: 14,
+          duration: dur.lenta,
+          stagger: 0.12,
+          clearProps: "transform,opacity",
+        }, 0.5)
+        .from(painel.querySelectorAll("[data-texto-conceito] p"), {
+          opacity: 0,
+          y: 14,
+          duration: dur.media,
+          stagger: 0.1,
+          ease: curva.fio,
+          clearProps: "transform,opacity",
+        }, 0.78);
+
+      // quickSetter guarda o setter da custom property: uma escrita por frame,
+      // sem passar pela máquina de tween. Um gsap.to({ "--p": ... }) leria o
+      // valor inicial com getComputedStyle(), que volta "" antes de alguém
+      // escrever — exigiria declarar --p: 0 ou registrar @property.
+      const escreverP = gsap.quickSetter(painel, "--p");
+
+      let alturaPainel = painel.offsetHeight;
+      let alturaJanela = window.innerHeight;
+
+      ScrollTrigger.create({
+        trigger: painel,
+        start: "top bottom",
+        end: "bottom top",
+        scrub: 0.5,
+        invalidateOnRefresh: true,
+        refreshPriority: prioridade.conceito,
+        onRefresh: () => {
+          alturaPainel = painel.offsetHeight;
+          alturaJanela = window.innerHeight;
+        },
+        onUpdate: (self) => {
+          // Mesma conta de antes, só re-derivada: o centro do painel vai de
+          // (janela + altura/2) até (-altura/2) ao longo do progresso.
+          const meio =
+            alturaJanela + alturaPainel / 2 - self.progress * (alturaJanela + alturaPainel);
+          const progresso = 1 - meio / alturaJanela; // ~-1 (embaixo) .. 1 (em cima)
+          escreverP((progresso * 70).toFixed(1));
+        },
+      });
+    }
+  });
+</script>

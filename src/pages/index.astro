@@ -1,0 +1,79 @@
+---
+import BaseLayout from "../layouts/BaseLayout.astro";
+import Capitulo from "../components/Capitulo.astro";
+import Capa from "../components/Capa.astro";
+import SecaoTematica from "../components/SecaoTematica.astro";
+import MenuConstelacao from "../components/MenuConstelacao.astro";
+import LeituraAutomatica from "../components/LeituraAutomatica.astro";
+import LinhaCostura from "../components/LinhaCostura.astro";
+import PainelConceito from "../components/PainelConceito.astro";
+import PainelMood from "../components/PainelMood.astro";
+import PainelPersona from "../components/PainelPersona.astro";
+import PainelTrendboard from "../components/PainelTrendboard.astro";
+import PainelCores from "../components/PainelCores.astro";
+import PainelTecidos from "../components/PainelTecidos.astro";
+import PainelEstampas from "../components/PainelEstampas.astro";
+import PainelMapa from "../components/PainelMapa.astro";
+import { conto } from "../data/textos";
+---
+
+<BaseLayout
+  title="Triádico — Book Digital · Vitória Baratto"
+  description="Book digital da coleção Triádico, de Vitória Baratto — Desenho de Book Digital, UDESC, 2026/2."
+>
+  <MenuConstelacao />
+  <LeituraAutomatica />
+  <LinhaCostura />
+
+  <main id="conteudo" tabindex="-1">
+    <Capa />
+
+    <Capitulo id="conceito" titulo="Conceito" fundo="resistencia">
+      <SecaoTematica titulo="Conceito">
+        <PainelConceito slot="visual" paragrafos={conto.conceito.paragrafos} />
+      </SecaoTematica>
+    </Capitulo>
+
+    <Capitulo id="mood" titulo="Mood" fundo="pertencer">
+      <SecaoTematica titulo="Mood">
+        <PainelMood slot="visual" paragrafos={conto.mood.paragrafos} />
+      </SecaoTematica>
+    </Capitulo>
+
+    <Capitulo id="persona" titulo="Persona" fundo="fragilidade">
+      <SecaoTematica titulo="Persona">
+        <PainelPersona slot="visual" paragrafos={conto.persona.paragrafos} />
+      </SecaoTematica>
+    </Capitulo>
+
+    <Capitulo id="trendboard" titulo="Trendboard" fundo="jardim">
+      <SecaoTematica titulo="Trendboard">
+        <PainelTrendboard slot="visual" paragrafos={conto.trendboard.paragrafos} />
+      </SecaoTematica>
+    </Capitulo>
+
+    <Capitulo id="cores" titulo="Cores" fundo="linho">
+      <SecaoTematica titulo="Cores e harmonias">
+        <PainelCores slot="visual" />
+      </SecaoTematica>
+    </Capitulo>
+
+    <Capitulo id="tecidos" titulo="Tecidos e aviamentos" fundo="fragilidade">
+      <SecaoTematica titulo="Tecidos e aviamentos">
+        <PainelTecidos slot="visual" />
+      </SecaoTematica>
+    </Capitulo>
+
+    <Capitulo id="estampas" titulo="Design de superfície" fundo="resistencia">
+      <SecaoTematica titulo="Design de superfície">
+        <PainelEstampas slot="visual" />
+      </SecaoTematica>
+    </Capitulo>
+
+    <Capitulo id="mapa" titulo="Mapa da coleção" fundo="linho">
+      <SecaoTematica titulo="Mapa da coleção">
+        <PainelMapa slot="visual" />
+      </SecaoTematica>
+    </Capitulo>
+  </main>
+</BaseLayout>

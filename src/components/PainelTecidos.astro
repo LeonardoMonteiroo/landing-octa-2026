@@ -1,0 +1,394 @@
+---
+/**
+ * Painel de tecidos e aviamentos: a materioteca da coleção.
+ *
+ * O índice de uma biblioteca de materiais: a lista de fichas corre de um lado
+ * e a amostra da vez fica grande e parada do outro, trocando conforme a
+ * leitura anda. É o arranjo que dá tamanho ao tecido — numa grade de
+ * miniaturas não dá para ver a trama, que é justamente o que uma amostra tem
+ * a dizer.
+ *
+ * A matéria vem de src/data/tecidos.ts e os recortes de
+ * scripts/extract-tecidos.mjs, que tira o fundo das fotos de amostra e
+ * descarta a legenda que vinha assada no PNG de cada aviamento — ali era
+ * pixel, aqui é texto.
+ *
+ * Duas camadas, como no PainelTrendboard e na CaixaFotos:
+ *
+ * - A de baixo, que sempre funciona (sem JS, movimento reduzido, celular): uma
+ *   lista comum, com a amostra ao lado da própria ficha. Nada depende de
+ *   script para ser lido.
+ * - A de cima é a classe `.armada`, que entra e sai **dentro** do `mm.add`.
+ *   Ela troca as miniaturas pelo palco fixo. Se o matchMedia reverter e a
+ *   classe ficar, a seção vira uma lista sem nenhuma imagem — por isso a
+ *   classe sai no cleanup.
+ */
+import { Image } from "astro:assets";
+import { tecidos, aviamentos } from "../data/tecidos";
+import { amostra, aviamento } from "../lib/materiais";
+
+const catalogo = tecidos;
+---
+
+<figure class="painel-tecidos relative left-1/2 right-1/2 -mx-[50vw] w-screen">
+  <header>
+    <h2>Tecidos e aviamentos</h2>
+    <p>
+      Dez amostras, uma de cada vez, do tamanho em que dá para ver a trama.
+    </p>
+  </header>
+
+  <div class="materioteca" data-materioteca>
+    {/* Camada 2: só aparece com a classe `.armada`. As imagens repetem as da
+        lista, e por isso não têm texto alternativo próprio. */}
+    <div class="palco" aria-hidden="true">
+      <div class="moldura">
+        {
+          catalogo.map((t) => (
+            <div class="grande" data-grande>
+              <Image
+                src={amostra(t.nome)}
+                alt=""
+                widths={[400, 640, 900]}
+                sizes="(min-width: 900px) 42vw, 90vw"
+                format="webp"
+                quality={88}
+              />
+            </div>
+          ))
+        }
+      </div>
+    </div>
+
+    <ol class="entradas">
+      {
+        catalogo.map((t) => (
+          <li class="entrada" data-entrada style={`--tom:${t.tom}`}>
+            <div class="mini">
+              <Image
+                src={amostra(t.nome)}
+                alt={t.alt}
+                widths={[400, 640, 900]}
+                sizes="(min-width: 900px) 42vw, 90vw"
+                format="webp"
+                quality={88}
+              />
+            </div>
+            <div class="texto">
+              <h3>{t.titulo}</h3>
+              <dl>
+                <dt class="sr-only">Composição</dt>
+                <dd>{t.composicao}</dd>
+                <dt class="sr-only">Gramatura</dt>
+                <dd>{t.gramatura}</dd>
+                <dt class="sr-only">Fornecedor</dt>
+                <dd class="fonte">{t.fornecedor}</dd>
+              </dl>
+            </div>
+          </li>
+        ))
+      }
+    </ol>
+  </div>
+
+  <section class="indice" data-indice aria-label="Aviamentos">
+    <h3>Aviamentos</h3>
+    <ul>
+      {
+        aviamentos.map((a) => (
+          <li>
+            <Image
+              src={aviamento(a.nome)}
+              alt={a.alt}
+              widths={[120, 240]}
+              sizes="3.5rem"
+              format="webp"
+              quality={90}
+            />
+            <span>{a.titulo}</span>
+          </li>
+        ))
+      }
+    </ul>
+  </section>
+
+  <figcaption class="sr-only">
+    Materioteca da coleção: as dez amostras de tecido em tamanho grande, uma de cada vez, com
+    composição, gramatura e fornecedor, seguidas do índice dos catorze aviamentos.
+  </figcaption>
+</figure>
+
+<style>
+  .painel-tecidos {
+    padding: clamp(2rem, 4vw, 3.5rem) clamp(1.25rem, 5vw, 4rem);
+  }
+
+  /* Cabeçalho curto de propósito: numa tela de 720 cada rem aqui empurra a
+     primeira amostra para baixo da dobra. */
+  header {
+    max-width: 40rem;
+    margin-bottom: clamp(1.25rem, 2.5vw, 2rem);
+  }
+
+  h2 {
+    font-family: var(--font-display);
+    font-size: clamp(2rem, 4.2vw, 3.4rem);
+    font-weight: 500;
+    line-height: 1.02;
+    margin: 0 0 0.9rem;
+  }
+
+  header p {
+    margin: 0;
+    font-size: 1.1rem;
+    line-height: 1.6;
+    opacity: 0.8;
+  }
+
+  /* ── camada 1: lista comum ─────────────────────────────────────────────── */
+
+  .palco {
+    display: none;
+  }
+
+  .entradas {
+    display: grid;
+    gap: clamp(2.5rem, 5vw, 4rem);
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .entrada {
+    display: grid;
+    gap: 1.25rem;
+    align-items: center;
+  }
+
+  @media (min-width: 560px) {
+    .entrada {
+      grid-template-columns: minmax(0, 14rem) minmax(0, 1fr);
+      gap: 2rem;
+    }
+  }
+
+  .mini :global(img) {
+    width: 100%;
+    height: auto;
+    display: block;
+  }
+
+  /* A ficha é o que se lê enquanto a amostra é olhada, e as duas têm de pesar
+     o mesmo: nome grande o bastante para ser o par da peça ao lado, e a
+     composição em corpo de leitura, não de legenda. */
+  h3 {
+    font-family: var(--font-display);
+    font-size: clamp(1.9rem, 4vw, 3.4rem);
+    font-weight: 500;
+    line-height: 1.02;
+    margin: 0 0 0.7rem;
+    padding-bottom: 0.55rem;
+    border-bottom: 3px solid var(--tom);
+  }
+
+  dl {
+    margin: 0;
+  }
+
+  dd {
+    margin: 0;
+    font-size: clamp(1.05rem, 1.3vw, 1.35rem);
+    line-height: 1.55;
+    opacity: 0.8;
+  }
+
+  .fonte {
+    font-style: italic;
+    opacity: 0.55;
+  }
+
+  /* ── camada 2: palco fixo, posta e retirada pelo matchMedia ────────────── */
+
+  .materioteca.armada {
+    display: grid;
+    grid-template-columns: minmax(0, 0.95fr) minmax(0, 1.05fr);
+    gap: clamp(2rem, 5vw, 5rem);
+    align-items: start;
+  }
+
+  .armada .palco {
+    position: sticky;
+    top: 0;
+    height: 100svh;
+    display: grid;
+    place-items: center;
+  }
+
+  .armada .moldura {
+    position: relative;
+    width: 100%;
+    aspect-ratio: 1;
+    max-height: 68svh;
+  }
+
+  .armada .grande {
+    position: absolute;
+    inset: 0;
+    display: grid;
+    place-items: center;
+  }
+
+  .armada .grande :global(img) {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    filter: drop-shadow(0 1rem 2rem rgb(0 0 0 / 0.35));
+  }
+
+  .armada .mini {
+    display: none;
+  }
+
+  .armada .entradas {
+    gap: 0;
+  }
+
+  /* Cada entrada ocupa uma tela: é o que dá a uma amostra o tempo de ser
+     olhada antes da próxima entrar. */
+  .armada .entrada {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    min-height: 82svh;
+    padding-block: 2rem;
+  }
+
+  .armada .entrada .texto {
+    max-width: 32rem;
+  }
+
+  /* ── índice de aviamentos ──────────────────────────────────────────────── */
+
+  .indice {
+    margin-top: clamp(3rem, 6vw, 5rem);
+    padding-top: clamp(2rem, 4vw, 3rem);
+    border-top: 1px dashed color-mix(in srgb, currentColor 45%, transparent);
+  }
+
+  .indice h3 {
+    font-family: var(--font-display);
+    font-size: clamp(1.4rem, 2.4vw, 2rem);
+    font-weight: 500;
+    border: 0;
+    margin: 0 0 1.5rem;
+    padding: 0;
+  }
+
+  .indice ul {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(16rem, 1fr));
+    gap: 0.9rem 2.5rem;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .indice li {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding-bottom: 0.7rem;
+    border-bottom: 1px solid color-mix(in srgb, currentColor 22%, transparent);
+  }
+
+  /* A caixa da miniatura é mais alta que larga porque metade das peças é: o
+     zíper e o viés são em pé, e numa caixa deitada eles encolhiam até virar
+     risco. */
+  .indice li :global(img) {
+    width: 3.5rem;
+    height: 3.2rem;
+    object-fit: contain;
+    flex: none;
+  }
+
+  .indice span {
+    font-size: 0.95rem;
+    line-height: 1.3;
+  }
+</style>
+
+<script>
+  import { gsap, mm, COM_MOVIMENTO, dur, curva } from "../lib/motion";
+
+  // Camada 2: o palco fixo. A entrada que estiver no meio da tela manda na
+  // amostra grande. Só em tela larga e só para quem não pediu menos movimento;
+  // o cleanup devolve a lista da camada 1, senão a seção ficaria sem nenhuma
+  // imagem.
+  mm.add(`${COM_MOVIMENTO} and (min-width: 900px)`, () => {
+    const caixa = document.querySelector<HTMLElement>("[data-materioteca]");
+    const entradas = gsap.utils.toArray<HTMLElement>("[data-entrada]");
+    const grandes = gsap.utils.toArray<HTMLElement>("[data-grande]");
+    if (!caixa || entradas.length === 0) return;
+
+    caixa.classList.add("armada");
+    gsap.set(grandes, { opacity: 0 });
+    gsap.set(grandes[0], { opacity: 1 });
+
+    let atual = 0;
+
+    // Um tween só, sobre a pilha inteira, e com `overwrite`. Dois tweens (um
+    // apagando a anterior, outro acendendo a nova) parecem mais naturais e são
+    // um bug: numa rolagem rápida o apagar de uma amostra termina antes do
+    // acender que já estava em curso na mesma peça, e ela volta para 1 e fica
+    // ligada. Dava denim na tela com a ficha do couro sintético.
+    const mostrar = (i: number) => {
+      if (i === atual) return;
+      atual = i;
+      gsap.to(grandes, {
+        opacity: (k: number) => (k === i ? 1 : 0),
+        duration: dur.rapida,
+        ease: curva.agulha,
+        overwrite: true,
+      });
+    };
+
+    // Quem manda na amostra grande é um IntersectionObserver, não um
+    // ScrollTrigger por entrada — e isso é deliberado. O ScrollTrigger mede uma
+    // vez e remede na ordem de criação, que é a ordem do bundle e não a do
+    // HTML: como esta seção é a última da página e duas seções acima dela pinam
+    // (Trendboard e Caixa de Fotos), as entradas eram medidas **antes** de os
+    // `pin-spacer` daquelas abrirem, e nasciam uns 5.000px adiantadas — a
+    // amostra grande mostrava o denim enquanto a ficha ao lado dizia couro
+    // sintético. Nem um refresh depois conserta (remede na mesma ordem), e
+    // `refreshPriority` só mudou o erro de lugar. O IO não guarda medida
+    // nenhuma: o navegador recalcula a interseção a cada quadro, e a Lenis move
+    // o scroll real do documento, então ele funciona aqui como já funciona no
+    // MenuConstelação.
+    //
+    // A margem esmaga a raiz numa linha só, a 55% da tela. Como as entradas se
+    // encostam, exatamente uma cruza essa linha de cada vez.
+    const olho = new IntersectionObserver(
+      (vistas) => {
+        for (const vista of vistas) {
+          if (vista.isIntersecting) mostrar(entradas.indexOf(vista.target as HTMLElement));
+        }
+      },
+      { rootMargin: "-55% 0px -45% 0px", threshold: 0 },
+    );
+    entradas.forEach((entrada) => olho.observe(entrada));
+
+    // Quem tira a amostra de cena no fim da seção é o próprio sticky, não um
+    // segundo observador. O palco é grudado dentro da grade das fichas e
+    // desgruda com ela; a moldura tem 68svh num palco de 100svh, então sobram
+    // 16svh de folga embaixo dela e ela nunca alcança a primeira fileira de
+    // aviamentos. Houve aqui um IO que apagava o palco quando o índice chegava
+    // — e ele engolia a última amostra: apagava com a ficha do Denim ainda
+    // inteira no meio da tela, uns 360px antes de ela sair por cima. Na ordem
+    // natural a ficha sai primeiro e a amostra logo atrás.
+
+    return () => {
+      olho.disconnect();
+      caixa.classList.remove("armada");
+    };
+  });
+</script>

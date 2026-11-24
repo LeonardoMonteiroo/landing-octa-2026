@@ -1,0 +1,311 @@
+---
+/**
+ * Marginália: o arranjo do Mood. O conto deixa de ser uma folha pregada no meio
+ * das fotos e passa a ser a espinha da seção. Ele é recortado em versos, um por
+ * estrofe, e cada verso fica **parado** no meio da tela enquanto as fotos
+ * daquela estrofe sobem pelas duas margens — o livro de lembranças com a foto
+ * enfiada entre as páginas e a anotação na beira.
+ *
+ * Camada de baixo (sem JS, movimento reduzido, celular): a seção inteira já
+ * montada. O verso parado é `position: sticky`, CSS puro, e funciona com a
+ * Lenis porque ela move o scroll real do documento — nada aqui depende do
+ * GSAP para o texto ficar legível.
+ *
+ * Camada de cima (GSAP, scrub): o verso da vez acende (de 0,25 a 1 de
+ * opacidade — nunca some, só recua), e as fotos das margens ganham parallax,
+ * cada uma na sua velocidade. Quem dispara é a `.estrofe`, um bloco comum, e
+ * não o verso: o verso é sticky, e medir a posição de um elemento grudado
+ * devolve onde ele está grudado, não onde ele mora.
+ */
+import { Image } from "astro:assets";
+import { versos as recortar, repartir } from "../lib/paredes";
+import type { FotoParede } from "../lib/paredes";
+import { acaso } from "../lib/acaso";
+
+interface Props {
+  fotos: FotoParede[];
+  paragrafos: string[];
+  /** Cor da inicial grande do primeiro verso. */
+  corCapitular?: string;
+  rotulo: string;
+}
+
+const {
+  fotos,
+  paragrafos,
+  corCapitular = "var(--cor-resistencia)",
+  rotulo,
+} = Astro.props;
+
+const versos = recortar(paragrafos);
+
+/**
+ * Uma estrofe por verso, com as fotos daquela altura do texto repartidas entre
+ * as duas margens. Índices pares para a esquerda e ímpares para a direita, e
+ * não a primeira metade para um lado: assim as proporções se misturam e as
+ * duas margens crescem mais ou menos juntas, em vez de uma ficar com todas as
+ * deitadas e a outra com todas as em pé.
+ */
+const grupos = repartir(fotos, versos.length);
+
+const estrofes = versos.map((verso, i) => ({
+  verso,
+  esquerda: grupos[i].filter((_, j) => j % 2 === 0),
+  direita: grupos[i].filter((_, j) => j % 2 === 1),
+}));
+
+/** Numeração corrida das fotos — é dela que saem a largura e a velocidade. */
+let n = 0;
+
+const [inicial = "", ...restoDaAbertura] = [...(versos[0]?.texto ?? "")];
+const abertura = restoDaAbertura.join("");
+---
+
+{/* Sangra de ponta a ponta, como o conceito e o trendboard: a `.marginalia`
+    se mede em `94vw`, e na página ela mora dentro da coluna de 64rem da
+    SecaoTematica. Sem isto a grade nasce dentro de 61rem, cresce para 83rem e
+    transborda **só para a direita** — as fotos da margem direita saem cortadas
+    pela borda da tela, e o verso fica descentrado. Nenhum pin aqui, então a
+    margem negativa é segura (ver CLAUDE.md). */}
+<figure class="marginalia-palco relative left-1/2 right-1/2 -mx-[50vw] w-screen" aria-label={rotulo}>
+  <div class="marginalia" style={`--cor-capitular:${corCapitular}`}>
+    {
+      estrofes.map(({ verso, esquerda, direita }, i) => (
+        <div class="estrofe">
+          <div class="coluna-verso">
+            <p
+              class:list={["verso", { "abre-paragrafo": verso.abreParagrafo, primeiro: i === 0 }]}
+              data-verso
+            >
+              {i === 0 ? (
+                <>
+                  <span class="inicial">{inicial}</span>
+                  {abertura}
+                </>
+              ) : (
+                verso.texto
+              )}
+            </p>
+          </div>
+
+          {[esquerda, direita].map((lado, ladoIndice) => (
+            <div class:list={["margem", ladoIndice === 0 ? "esq" : "dir"]}>
+              {lado.map((f) => {
+                const k = n++;
+                return (
+                  <div
+                    class="anotacao"
+                    data-margem
+                    data-velocidade={Math.round(26 + acaso(k, 7) * 46)}
+                    style={`--largura:${Math.round(80 + acaso(k, 11) * 20)}%; --aspect:${f.aspect}`}
+                  >
+                    <div class="gira papel" style={`--giro:${f.giro}deg`}>
+                      <Image
+                        src={f.src}
+                        alt={f.alt}
+                        widths={[240, 400, 560]}
+                        sizes="(min-width: 900px) 24rem, 45vw"
+                        format="webp"
+                        quality={84}
+                      />
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          ))}
+        </div>
+      ))
+    }
+  </div>
+</figure>
+
+<style>
+  /* `margin-block`, não `margin`: o `-mx-[50vw]` do full-bleed é utilitário do
+     Tailwind (especificidade 0,1,0) e este bloco é escopado pelo Astro
+     (0,2,0) — um `margin: 0` aqui apagaria a margem negativa e deixaria só o
+     `left: 50%`, jogando a seção inteira meia tela para a direita. */
+  .marginalia-palco {
+    margin-block: 0;
+    padding-block: clamp(3rem, 8vw, 7rem);
+  }
+
+  .marginalia {
+    width: min(94vw, 88rem);
+    margin-inline: auto;
+  }
+
+  /* Celular: duas colunas de margem embaixo do verso. O verso vem antes no HTML
+     (é o conteúdo; as fotos são a margem dele), e no desktop é a coordenada da
+     grade que o joga para o meio — não a ordem do documento. */
+  /* `align-items` fica no padrão (stretch), e isso não é descuido: é o que faz
+     a célula do verso ter a altura da estrofe inteira. Com `start`, a célula
+     encolhe até o tamanho do próprio parágrafo, o `sticky` fica sem percurso
+     nenhum para viajar e o verso sai de cena junto com as fotos — a coluna do
+     meio ficava vazia na tela toda. */
+  .estrofe {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 1.5rem clamp(0.8rem, 3vw, 2rem);
+  }
+
+  .coluna-verso {
+    grid-column: 1 / -1;
+  }
+
+  /* A margem não se estica com a estrofe: as fotos empilham a partir do topo e
+     o que sobra embaixo é respiro, não espaço distribuído entre elas. */
+  .margem {
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-start;
+    gap: clamp(0.9rem, 2vw, 1.8rem);
+  }
+
+  @media (min-width: 900px) {
+    /* A medida do meio é o que manda: o que sobra dos dois lados vira margem.
+       Com 88rem de largura máxima e 30rem de texto dá 25rem por margem — e o
+       texto cabe nesses 30rem porque o verso encolheu junto (ver .verso). */
+    .estrofe {
+      grid-template-columns: 1fr minmax(0, 30rem) 1fr;
+      column-gap: clamp(1.5rem, 4vw, 4rem);
+    }
+
+    .coluna-verso {
+      grid-column: 2;
+      grid-row: 1;
+    }
+
+    .margem.esq {
+      grid-column: 1;
+      grid-row: 1;
+      align-items: flex-end;
+    }
+
+    .margem.dir {
+      grid-column: 3;
+      grid-row: 1;
+      align-items: flex-start;
+    }
+
+    /* As margens começam desencontradas do verso de propósito: anotação na
+       beira não nasce na mesma linha do parágrafo. */
+    .margem.dir {
+      padding-top: clamp(2rem, 6vw, 5rem);
+    }
+  }
+
+  /* O verso parado. A célula da grade estica na altura da estrofe, e é dentro
+     dela que o sticky viaja — quando as fotos da estrofe acabam de passar, a
+     estrofe sai e leva o verso junto, entregando a vez ao próximo. */
+  .verso {
+    position: sticky;
+    top: 40vh;
+    margin: 0;
+    padding-block: clamp(1.5rem, 4vw, 2.5rem);
+    font-family: var(--font-conto);
+    font-size: clamp(1.25rem, 2.1vw, 1.95rem);
+    /* Corpo menor pede entrelinha maior: a Bodoni é de contraste alto e fica
+       ralinha quando encolhe, e o verso aqui tem linha curta. */
+    line-height: 1.4;
+    text-wrap: pretty;
+    hyphens: auto;
+  }
+
+  /* Começo de parágrafo do conto respira mais que continuação de frase. */
+  .verso.abre-paragrafo {
+    padding-top: clamp(3rem, 8vw, 5rem);
+  }
+
+  .inicial {
+    float: left;
+    margin-right: 0.06em;
+    font-family: var(--font-display);
+    font-size: 3.4em;
+    line-height: 0.82;
+    color: var(--cor-capitular);
+  }
+
+  /* Teto de altura pela proporção, a mesma cura do mural e do lineup: largura
+     dada + altura pela proporção faz um recorte de 0,25 descer uma tela inteira
+     e engolir o verso ao lado. O `min()` só morde nas peças em pé — nas
+     deitadas quem manda continua sendo o `--largura`. */
+  .anotacao {
+    width: min(var(--largura), calc(var(--aspect) * 70svh));
+    max-width: 100%;
+  }
+
+  /* Dois níveis, como no mural: o `.gira` de dentro carrega o ângulo de
+     repouso, e o wrapper [data-margem] fica livre para o `y` do parallax. */
+  /* Sem filete: a foto sangra até a borda do papel. O `.papel` fica pela
+     sombra baixa, de anotação encostada na margem — o fundo claro dele some
+     por baixo da imagem, que agora cobre a caixa inteira. */
+  .gira {
+    rotate: var(--giro);
+    line-height: 0;
+  }
+
+  .anotacao :global(img) {
+    display: block;
+    width: 100%;
+    height: auto;
+  }
+</style>
+
+<script>
+  import { gsap, mm, COM_MOVIMENTO, prioridade } from "../lib/motion";
+
+  mm.add(COM_MOVIMENTO, () => {
+    // O verso da vez acende. Nunca abaixo de 0,25: o texto é o conteúdo da
+    // seção e não pode sumir em momento nenhum — o que a rolagem muda é o
+    // peso dele, não a existência.
+    //
+    // O gatilho é a `.estrofe`, não o verso. O verso é `position: sticky`, e
+    // um refresh do ScrollTrigger com ele grudado mediria a posição colada no
+    // topo em vez da posição de origem — start e end sairiam tortos.
+    for (const verso of gsap.utils.toArray<HTMLElement>("[data-verso]")) {
+      const estrofe = verso.closest<HTMLElement>(".estrofe");
+      if (!estrofe) continue;
+
+      gsap.fromTo(
+        verso,
+        { opacity: 0.25 },
+        {
+          opacity: 1,
+          ease: "none",
+          scrollTrigger: {
+            trigger: estrofe,
+            start: "top 78%",
+            end: "top 42%",
+            scrub: 0.6,
+            invalidateOnRefresh: true,
+            refreshPriority: prioridade.mood,
+          },
+        },
+      );
+    }
+
+    // Parallax nas margens: cada anotação sobe na sua velocidade enquanto
+    // atravessa a tela, então as duas margens nunca andam como um bloco só.
+    // O alvo é o wrapper — o `rotate` de repouso vive no `.gira` de dentro.
+    for (const anotacao of gsap.utils.toArray<HTMLElement>("[data-margem]")) {
+      const v = Number(anotacao.dataset.velocidade) || 40;
+      gsap.fromTo(
+        anotacao,
+        { y: v },
+        {
+          y: -v,
+          ease: "none",
+          scrollTrigger: {
+            trigger: anotacao,
+            start: "top bottom",
+            end: "bottom top",
+            scrub: 0.8,
+            invalidateOnRefresh: true,
+            refreshPriority: prioridade.mood,
+          },
+        },
+      );
+    }
+  });
+</script>

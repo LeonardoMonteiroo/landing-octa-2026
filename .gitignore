@@ -1,0 +1,51 @@
+# Dependencies
+node_modules/
+.pnp
+.pnp.js
+
+# Build outputs
+dist/
+build/
+.next/
+out/
+.astro/
+
+# Environment variables
+.env
+.env.local
+.env.*.local
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+*.log
+
+# Editor / IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Misc
+*.tmp
+*.temp
+
+# Claude Code — settings.json e .claude/skills/ são versionados; o local não.
+.claude/settings.local.json
+
+# Screenshots do piloto (skill run-landing-octa-2026). Saída de inspeção.
+.piloto/
+
+# Material de origem: PDFs e zips do book, insumo dos scripts de extração
+# (extract-book, extract-svg-assets, extract-painel). Fica só na máquina —
+# o astro build nunca abre esses arquivos, e no LFS eram 138 dos 222 MB.
+reference/
+
+# Worktrees locais do Claude Code
+.claude/worktrees/

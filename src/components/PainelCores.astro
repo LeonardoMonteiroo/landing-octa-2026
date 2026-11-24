@@ -1,0 +1,44 @@
+---
+/**
+ * Painel de cores e harmonias: a página técnica do book, e a única da landing
+ * que é sobre a própria paleta.
+ *
+ * Fundo de papel claro, e não o linho da seção. As meadas e o novelo são
+ * desenhados com as linhas do fio em vazado — o que se vê entre elas é o fundo
+ * atrás —, então o papel precisa ser mais claro que o mais claro dos corpos
+ * (o Ninho, #d9b668). Sobre o linho (#c3c3c0) as linhas do novelo de Ninho
+ * escureceriam em vez de clarear, e o desenho inverteria.
+ *
+ * Sangra de ponta a ponta como os outros painéis: é o que deixa as barras da
+ * cartela atravessarem a página inteira, que é o gesto da seção. Não há pin
+ * aqui — e se um dia houver, não pode ser neste <figure>, que combina margem
+ * negativa com w-screen (ver CLAUDE.md).
+ */
+import CartelaCores from "./CartelaCores.astro";
+import Harmonias from "./Harmonias.astro";
+---
+
+<figure class="painel-cores relative left-1/2 right-1/2 -mx-[50vw] w-screen">
+  <div class="papel-cores textura-linho">
+    <div class="mx-auto max-w-6xl px-5 sm:px-8">
+      <CartelaCores />
+      <div class="mt-20 sm:mt-28">
+        <Harmonias />
+      </div>
+    </div>
+  </div>
+
+  <figcaption class="sr-only">
+    Cartela de cores da coleção: seis novelos de lã, um por cor, cada um puxando uma faixa da
+    própria cor com o nome e o código Pantone. Abaixo, as oito combinações que a coleção usa,
+    montadas como pilhas de duas e de três meadas.
+  </figcaption>
+</figure>
+
+<style>
+  .papel-cores {
+    background: var(--cor-linho-claro);
+    color: var(--cor-resistencia);
+    padding-block: clamp(3.5rem, 9vw, 7rem);
+  }
+</style>

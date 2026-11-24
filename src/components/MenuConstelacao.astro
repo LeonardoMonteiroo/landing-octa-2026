@@ -1,0 +1,94 @@
+---
+import { capitulos } from "../data/capitulos";
+import Estrela from "./Estrela.astro";
+
+const destaques = capitulos;
+---
+
+<nav
+  id="menu-constelacao"
+  aria-label="Sumário do book"
+  class="fixed inset-x-0 top-0 z-50 border-b border-resistencia/15 bg-linho/90 backdrop-blur"
+>
+  <div class="mx-auto flex max-w-6xl items-center justify-center gap-2 px-3 py-2">
+    <button
+      id="menu-toggle"
+      type="button"
+      aria-expanded="false"
+      aria-controls="menu-lista"
+      class="font-ficha flex shrink-0 items-center gap-2 rounded-full border border-resistencia/25 px-3 py-1.5 text-xs uppercase tracking-[0.15em] text-resistencia"
+    >
+      <Estrela pontas={6} tamanho={14} />
+      Sumário
+    </button>
+
+    <ul
+      id="menu-lista"
+      class="hidden flex-wrap items-center justify-center gap-x-1 gap-y-1 text-xs sm:flex"
+    >
+      {
+        destaques.map((c) => (
+          <li class="shrink-0">
+            <a
+              href={`#${c.id}`}
+              data-menu-link={c.id}
+              class="font-ficha inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-resistencia/70 transition hover:text-resistencia aria-[current=location]:font-semibold aria-[current=location]:text-resistencia"
+            >
+              <Estrela pontas={5} tamanho={9} class="opacity-60" />
+              {c.titulo}
+            </a>
+          </li>
+        ))
+      }
+    </ul>
+  </div>
+</nav>
+
+<script>
+  const toggle = document.getElementById("menu-toggle");
+  const lista = document.getElementById("menu-lista");
+
+  toggle?.addEventListener("click", () => {
+    const expanded = toggle.getAttribute("aria-expanded") === "true";
+    toggle.setAttribute("aria-expanded", String(!expanded));
+    lista?.classList.toggle("hidden");
+    lista?.classList.toggle("flex");
+  });
+
+  // Em telas largas o menu já fica visível; o toggle só importa no mobile.
+  const mq = window.matchMedia("(min-width: 640px)");
+  function syncVisibility() {
+    if (mq.matches) {
+      lista?.classList.remove("hidden");
+      lista?.classList.add("flex");
+    } else if (toggle?.getAttribute("aria-expanded") !== "true") {
+      lista?.classList.add("hidden");
+      lista?.classList.remove("flex");
+    }
+  }
+  mq.addEventListener("change", syncVisibility);
+  syncVisibility();
+
+  const links = document.querySelectorAll<HTMLAnchorElement>("[data-menu-link]");
+  const linkById = new Map(Array.from(links).map((a) => [a.dataset.menuLink, a]));
+
+  const destaqueIds = Array.from(linkById.keys());
+  const sections = destaqueIds
+    .map((id) => document.getElementById(id!))
+    .filter((el): el is HTMLElement => Boolean(el));
+
+  if ("IntersectionObserver" in window && sections.length) {
+    const observer = new IntersectionObserver(
+      (entries) => {
+        for (const entry of entries) {
+          if (entry.isIntersecting) {
+            links.forEach((a) => a.removeAttribute("aria-current"));
+            linkById.get(entry.target.id)?.setAttribute("aria-current", "location");
+          }
+        }
+      },
+      { rootMargin: "-45% 0px -50% 0px", threshold: 0 },
+    );
+    sections.forEach((el) => observer.observe(el));
+  }
+</script>

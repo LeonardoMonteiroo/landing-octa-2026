@@ -1,0 +1,11 @@
+---
+/**
+ * Ponto de montagem da camada de movimento. Não renderiza nada: existe só
+ * para o BaseLayout puxar src/lib/motion.ts para o bundle da página, mesmo
+ * numa página que não tenha nenhum componente animado.
+ */
+---
+
+<script>
+  import "../lib/motion";
+</script>

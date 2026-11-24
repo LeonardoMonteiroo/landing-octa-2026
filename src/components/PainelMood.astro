@@ -1,0 +1,33 @@
+---
+/**
+ * Painel do moodboard (página 13 do book), remontado a partir das fotos soltas
+ * do zip de referência em vez do scan achatado da página.
+ *
+ * O arranjo é a Marginália: o trecho do conto é a espinha da seção, recortado
+ * em versos, e as 18 fotos passam pelas duas margens de cada verso. Antes elas
+ * ficavam numa parede de colagem (o Mural.astro, dividido com a Persona) com a
+ * folha do conto pregada no meio como mais uma peça — e ali o texto se perdia
+ * entre as fotos, sem hierarquia nenhuma entre um e outro.
+ *
+ * A matéria (as fotos na ordem da parede) vem de lib/paredes.ts, dividida com
+ * a Persona; o que muda de um painel para o outro é só o arranjo.
+ *
+ * Ver scripts/extract-moodboard.mjs para a extração dos recortes.
+ */
+import Marginalia from "./Marginalia.astro";
+import { paredeMood } from "../lib/paredes";
+
+interface Props {
+  /** Trecho do conto, a espinha da seção (ver index.astro). */
+  paragrafos?: string[];
+}
+
+const { paragrafos = [] } = Astro.props;
+---
+
+<Marginalia
+  fotos={paredeMood()}
+  paragrafos={paragrafos}
+  corCapitular="var(--cor-ninho)"
+  rotulo="Moodboard da coleção: arte surrealista, retratos de família de três gerações, retalhos de tecido, ninhos e botânica, nas margens do trecho do conto, verso a verso."
+/>

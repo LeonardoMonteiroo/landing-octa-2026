@@ -1,0 +1,343 @@
+---
+/**
+ * Design de superfície: a cartela de amostras.
+ *
+ * As cinco superfícies da coleção — os três xadrezes e as duas peças
+ * costuradas — pregadas numa cartela de papel, como o mostruário que um
+ * fornecedor manda para o ateliê.
+ *
+ * **A medida manda na composição.** Cada xadrez é um rapport fechado de
+ * 242 × 242 que não pode ser redimensionado (ver `rapport` em
+ * src/lib/superficies.ts), e por isso cada amostra tem exatamente esse lado:
+ * uma repetição inteira, nenhuma fração. A parede anterior dava ~380 × 300 por
+ * peça — uma repetição e meia, que o olho lê como campo cinza e não como
+ * desenho: oito das onze peças não mostravam xadrez nenhum. Não é questão de
+ * gosto, é de quanto do desenho cabe na casa.
+ *
+ * **O suporte inverte.** A parede do capítulo continua vinho, mas a cartela é
+ * de papel claro, e é sobre ela que o pano aparece. Os três xadrezes são de
+ * 61% a 80% grafite; sobre o vinho esse grafite afunda, sobre o linho claro
+ * ele volta a ter forma.
+ *
+ * **A borda é o que faz das cinco uma família.** Os três xadrezes ganham em
+ * `clip-path` a mesma serrilha de pinking que as duas peças fotografadas já
+ * têm de verdade no recorte. Deixam de ser "fundo" e "foto" e viram cinco
+ * amostras do mesmo mostruário — que é o que elas são.
+ *
+ * **A seção não escreve nada.** Sem título por peça, sem descrição, sem lista
+ * de cores: o que tinha de ser dito está no pano. O que existe de texto é o
+ * letreiro e a alternativa textual de cada peça (`aria-label` nos panos, `alt`
+ * nas fotos, `figcaption` na figura). Quem não vê a cartela recebe o mesmo que
+ * quem vê.
+ *
+ * Não há classe de armação a pôr nem a tirar: se o bundle de movimento falhar,
+ * a cartela continua montada e parada. A coreografia só acrescenta o assentar
+ * de cada amostra e o passo de paralaxe da folha.
+ *
+ * Nenhum elemento daqui pode ganhar a utilidade `transition` do Tailwind — ela
+ * inclui `opacity`, e num alvo de GSAP isso é a armadilha número um do
+ * CLAUDE.md.
+ */
+import { Image } from "astro:assets";
+import { estampas, pecas } from "../data/estampas";
+import { pecaSuperficie, rapport } from "../lib/superficies";
+
+/**
+ * A serrilha do pinking, em `clip-path: polygon()`.
+ *
+ * Os dentes andam em porcentagem, e por isso só ficam simétricos em peça
+ * quadrada — que é o caso: o xadrez entra sempre num quadrado de um rapport.
+ * `prof` é a altura do dente; 2,6% de 242px dá ~6px, que é o passo da tesoura
+ * de picotar das duas amostras fotografadas.
+ */
+function serrilha(dentes = 20, prof = 2.6): string {
+  const p: string[] = [];
+  const passo = 100 / dentes;
+  const dentro = (i: number) => (i % 2 ? 0 : prof);
+  for (let i = 0; i < dentes; i++) p.push(`${(i * passo).toFixed(2)}% ${dentro(i)}%`);
+  for (let i = 0; i < dentes; i++) p.push(`${100 - dentro(i)}% ${(i * passo).toFixed(2)}%`);
+  for (let i = 0; i < dentes; i++) p.push(`${(100 - i * passo).toFixed(2)}% ${100 - dentro(i)}%`);
+  for (let i = 0; i < dentes; i++) p.push(`${dentro(i)}% ${(100 - i * passo).toFixed(2)}%`);
+  return `polygon(${p.join(",")})`;
+}
+
+const corte = serrilha();
+
+const panos = estampas.map((e, i) => ({
+  descricao: e.descricao,
+  linha: e.linha,
+  arquivo: rapport(e.nome),
+  atraso: (i * 0.08).toFixed(2),
+}));
+
+const fotos = [
+  { ...pecas.retalho, src: pecaSuperficie("retalho"), atraso: 0.28 },
+  { ...pecas.bordado, src: pecaSuperficie("bordado"), atraso: 0.36 },
+];
+---
+
+<figure class="mostruario relative left-1/2 right-1/2 -mx-[50vw] w-screen">
+  <div class="cartela" data-mostruario>
+    <h2>Design de superfície</h2>
+
+    {/* Os três panos: um rapport inteiro cada um, picotado como amostra. */}
+    <div class="fileira panos">
+      {
+        panos.map((p) => (
+          <div
+            class="amostra forro"
+            data-cartela-peca
+            role="img"
+            aria-label={p.descricao}
+            style={`--linha:${p.linha}; --atraso:${p.atraso}s; --corte:${corte}; --pano-1x:url(${p.arquivo.um}); --pano-2x:url(${p.arquivo.dois})`}
+          >
+            <div class="pano" />
+          </div>
+        ))
+      }
+    </div>
+
+    {/* As duas peças costuradas. Já vêm com a serrilha de verdade no recorte —
+        nada de `clip-path` aqui, que seria picotar o que já está picotado. */}
+    <div class="fileira costuradas">
+      {
+        fotos.map((f) => (
+          <div
+            class="amostra costurada"
+            data-cartela-peca
+            style={`--aspect:${f.aspect}; --atraso:${f.atraso}s`}
+          >
+            <Image
+              src={f.src}
+              alt={f.alt}
+              widths={[300, 480, 700]}
+              sizes="(min-width: 760px) 24vw, 64vw"
+              format="webp"
+              quality={88}
+            />
+          </div>
+        ))
+      }
+    </div>
+  </div>
+
+  <figcaption class="sr-only">
+    Cartela com as cinco superfícies da coleção: os três xadrezes, cada um numa amostra de uma
+    repetição, e as duas peças costuradas — o retalho de nove pedaços e o bordado da assinatura.
+  </figcaption>
+</figure>
+
+<style>
+  .mostruario {
+    padding: clamp(2.5rem, 6vw, 5rem) clamp(1.25rem, 5vw, 4rem) clamp(3.5rem, 8vw, 6.5rem);
+  }
+
+  /* A cartela é de papel: sobre o vinho o grafite do xadrez desaparece, sobre
+     o linho claro ele volta a ter forma. A sombra é a de coisa encostada na
+     parede, a mesma do `.papel` — não a sombra difusa de card flutuando. */
+  .cartela {
+    max-width: 68rem;
+    margin-inline: auto;
+    padding: clamp(1.75rem, 3.4vw, 3rem) clamp(1.5rem, 3.4vw, 3.25rem) clamp(2.25rem, 4vw, 3.5rem);
+    background: var(--cor-linho-claro);
+    box-shadow: 0 0.35rem 0.75rem -0.3rem rgb(0 0 0 / 0.42);
+    translate: 0 calc(var(--p, 0) * 10px);
+  }
+
+  /* O letreiro mora na cartela, não na parede: é a etiqueta do mostruário. */
+  h2 {
+    font-family: var(--font-display);
+    font-size: clamp(1.75rem, 3.4vw, 2.75rem);
+    font-weight: 500;
+    line-height: 1.04;
+    color: var(--cor-resistencia);
+    margin: 0 0 clamp(1.75rem, 3.6vw, 2.75rem);
+  }
+
+  .fileira {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    align-items: center;
+  }
+
+  .panos {
+    gap: clamp(1.25rem, 3vw, 2.5rem);
+  }
+
+  .costuradas {
+    gap: clamp(2rem, 5vw, 4.5rem);
+    margin-top: clamp(1.25rem, 2.6vw, 2.25rem);
+  }
+
+  .amostra {
+    position: relative;
+  }
+
+  /* 242px é o lado do rapport: uma repetição inteira, sem reamostrar nada.
+     Abaixo disso a amostra mostraria pedaço de desenho; acima, emenda. */
+  .forro {
+    width: 242px;
+    height: 242px;
+    max-width: 100%;
+  }
+
+  .pano {
+    position: absolute;
+    inset: 0;
+    background-image: var(--pano-1x);
+    background-image: image-set(var(--pano-1x) 1x, var(--pano-2x) 2x);
+    background-repeat: repeat;
+    /* Tamanho nativo do arquivo: reamostrar um rapport abre emenda onde não
+       havia. A cópia 2x é vizinho mais próximo, para a linha de 1px não
+       borrar num ecrã de dois. */
+    background-size: 242px 242px;
+    clip-path: var(--corte);
+  }
+
+  /* O fio dominante daquele pano, medido, assomando por baixo da amostra: é a
+     espessura do pano vista de canto. Mesma forma, cinco pixels abaixo.
+     O forro **tem** de ser um elemento à parte do `.pano`: `clip-path` abre
+     contexto de empilhamento, e dentro dele um `z-index: -1` não vai para trás
+     do fundo do próprio elemento — pinta em cima dele. Foi assim que as três
+     amostras apareceram chapadas na cor do fio, sem xadrez nenhum. */
+  .forro::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    translate: 0 5px;
+    background: var(--linha);
+    clip-path: var(--corte);
+    z-index: -1;
+    opacity: 0.55;
+  }
+
+  .costurada {
+    height: 210px;
+    aspect-ratio: var(--aspect);
+    max-width: 100%;
+    filter: drop-shadow(0 0.35rem 0.6rem rgb(0 0 0 / 0.3));
+  }
+
+  .costurada :global(img) {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+  }
+
+  /* Numa tela estreita a cartela não encolhe o rapport — ela mostra menos
+     dele. O quadrado vira o que couber, e o `background-size` continua
+     nativo: reamostrar um rapport abre emenda onde não havia. */
+  @media (max-width: 720px) {
+    .forro {
+      width: min(242px, 68vw);
+      height: min(242px, 68vw);
+    }
+
+    .costurada {
+      height: min(210px, 58vw);
+    }
+  }
+</style>
+
+<script>
+  import { gsap, mm, COM_MOVIMENTO, dur, curva, prioridade } from "../lib/motion";
+
+  mm.add(COM_MOVIMENTO, () => {
+    const cartela = document.querySelector<HTMLElement>("[data-mostruario]");
+    const amostras = gsap.utils.toArray<HTMLElement>("[data-cartela-peca]");
+    if (!cartela || amostras.length === 0) return;
+
+    // Quem esconde é quem revela, e os dois vivem aqui dentro: o matchMedia
+    // desfaz até o gsap.set quando a preferência muda com a página aberta.
+    // Nada disso pode ir para o CSS — lá a cartela ficaria vazia para sempre
+    // se o bundle falhasse.
+    gsap.set(amostras, { opacity: 0, y: 14 });
+
+    const pendentes = new Set(amostras);
+
+    const assentar = (peca: HTMLElement, comCerimonia: boolean) => {
+      if (!pendentes.has(peca)) return;
+      pendentes.delete(peca);
+      olho.unobserve(peca);
+      gsap.to(peca, {
+        opacity: 1,
+        y: 0,
+        duration: comCerimonia ? dur.media : dur.instante,
+        ease: curva.tecido,
+        delay: comCerimonia ? parseFloat(peca.style.getPropertyValue("--atraso")) || 0 : 0,
+        clearProps: "transform",
+      });
+    };
+
+    /**
+     * A varredura é a rede de segurança, e ela existe por um motivo medido: o
+     * IntersectionObserver só avisa quando a interseção **muda**. Numa rolagem
+     * que salta — âncora do sumário, `End`, roda de mouse pesada —, uma peça
+     * pode estar abaixo da tela num quadro e acima dela no seguinte sem nunca
+     * ter cruzado nada, e então nunca recebe aviso nenhum. É a mesma armadilha
+     * das 18 fotos do mood, por outra porta.
+     *
+     * Quem já passou por cima da tela assenta na hora, sem cerimônia: assentar
+     * devagar uma peça que o leitor não está olhando é animação para ninguém.
+     */
+    const varrer = () => {
+      if (pendentes.size === 0) return;
+      const tela = window.innerHeight;
+      for (const peca of [...pendentes]) {
+        const r = peca.getBoundingClientRect();
+        if (r.bottom < 0) assentar(peca, false);
+        else if (r.top < tela * 0.92) assentar(peca, true);
+      }
+    };
+
+    /**
+     * Um IntersectionObserver, e não um ScrollTrigger, para a revelação de uma
+     * vez só. É a mesma escolha do PainelTecidos e pelo mesmo motivo: esta
+     * seção vem depois de duas que pinam, e o ScrollTrigger mede na ordem de
+     * criação — que é a ordem do bundle, não a do HTML. Quem mede antes de um
+     * `pin-spacer` abrir nasce adiantado pela altura dele. O IO não guarda
+     * medida nenhuma: o navegador recalcula a interseção a cada quadro.
+     */
+    const olho = new IntersectionObserver(
+      (vistas) => {
+        for (const vista of vistas)
+          if (vista.isIntersecting) assentar(vista.target as HTMLElement, true);
+        varrer();
+      },
+      { rootMargin: "0px 0px -8% 0px", threshold: 0 },
+    );
+    amostras.forEach((a) => olho.observe(a));
+
+    // A cartela anda alguns pixels contra a parede — o contrato do `--p` do
+    // painel-conceito, aqui só para a folha não parecer pintada no vinho. É
+    // também a segunda rede da varredura, pelo `onUpdate`: enquanto a cartela
+    // estiver em cena, todo quadro de rolagem passa por ali, e a `varrer` sai
+    // na primeira linha quando não há nada pendente.
+    const flutua = gsap.fromTo(
+      cartela,
+      { "--p": -1 },
+      {
+        "--p": 1,
+        ease: "none",
+        scrollTrigger: {
+          trigger: cartela,
+          start: "top bottom",
+          end: "bottom top",
+          scrub: true,
+          invalidateOnRefresh: true,
+          onUpdate: varrer,
+          // Quem vem antes na página leva número maior, e prioridade maior
+          // remede primeiro. Esta seção é a última antes da LinhaCostura.
+          refreshPriority: prioridade.estampas,
+        },
+      },
+    );
+
+    return () => {
+      olho.disconnect();
+      flutua.scrollTrigger?.kill();
+    };
+  });
+</script>

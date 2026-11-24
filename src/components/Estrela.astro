@@ -1,0 +1,84 @@
+---
+/**
+ * Estrela de N pontas — motivo recorrente no book (estrelas de 5, 6 e 12
+ * pontas nas páginas de transição e no menu-constelação). Vetor
+ * original simples, não é traço de nenhuma arte do book.
+ *
+ * Duas formas:
+ *
+ * - padrão: polígono de pontas iguais e lados retos.
+ * - `brilho`: o cintilar das páginas de conto — quatro raios longos nos eixos,
+ *   quatro curtos nas diagonais e lados côncavos, porque cada lado é uma curva
+ *   que puxa para o centro. É o que afina os raios em agulha.
+ */
+interface Props extends astroHTML.JSX.SVGAttributes {
+  pontas?: number;
+  cor?: string;
+  tamanho?: number;
+  /** Raios alternados e lados côncavos, em vez de polígono de lados retos. */
+  brilho?: boolean;
+  /** Só com `brilho`: raio das pontas curtas, em fração da longa. */
+  raioCurto?: number;
+  /** Só com `brilho`: raio do vale entre duas pontas, no viewBox de 100. Maior = corpo central mais gordo. */
+  vale?: number;
+  class?: string;
+}
+
+// O resto vai direto para o <svg>: é assim que os data-* de animação
+// (data-capa-estrela e afins) chegam ao elemento de verdade.
+const {
+  pontas = 8,
+  cor = "currentColor",
+  tamanho = 24,
+  brilho = false,
+  raioCurto = 0.52,
+  vale = 10,
+  class: className,
+  ...resto
+} = Astro.props;
+
+const raioExterno = 50;
+const polar = (raio: number, angulo: number) =>
+  [50 + raio * Math.cos(angulo), 50 + raio * Math.sin(angulo)] as const;
+const emAngulo = (raio: number, i: number, passo: number) => polar(raio, passo * i - Math.PI / 2);
+const fmt = ([x, y]: readonly [number, number]) => `${x.toFixed(2)},${y.toFixed(2)}`;
+
+// Forma padrão: polígono alternando raio externo e interno.
+const raioInterno = raioExterno * 0.32;
+const pontos: string[] = [];
+for (let i = 0; i < pontas * 2; i++) {
+  pontos.push(fmt(emAngulo(i % 2 === 0 ? raioExterno : raioInterno, i, Math.PI / pontas)));
+}
+
+// Forma brilho: cada raio é desenhado sozinho — sai do vale, vai até a ponta e
+// volta ao vale seguinte, com o ponto de controle das duas curvas no eixo do
+// próprio raio, perto do centro. É isso que dá o flanco côncavo, a ponta em
+// agulha e o corpo central pequeno. Os raios alternam longo e curto, então
+// `pontas` aqui quer ser par.
+const passo = (Math.PI * 2) / pontas;
+const meioPasso = passo / 2;
+const anguloDoRaio = (i: number) => passo * i - Math.PI / 2;
+const raioDoRaio = (i: number) => (i % 2 === 0 ? raioExterno : raioExterno * raioCurto);
+
+let traco = `M ${fmt(polar(vale, anguloDoRaio(0) - meioPasso))}`;
+for (let i = 0; i < pontas; i++) {
+  const a = anguloDoRaio(i);
+  const controle = fmt(polar(vale, a));
+  traco += ` Q ${controle} ${fmt(polar(raioDoRaio(i), a))}`;
+  traco += ` Q ${controle} ${fmt(polar(vale, a + meioPasso))}`;
+}
+traco += " Z";
+---
+
+<svg
+  class={className}
+  width={tamanho}
+  height={tamanho}
+  viewBox="0 0 100 100"
+  fill={cor}
+  aria-hidden="true"
+  focusable="false"
+  {...resto}
+>
+  {brilho ? <path d={traco} /> : <polygon points={pontos.join(" ")} />}
+</svg>

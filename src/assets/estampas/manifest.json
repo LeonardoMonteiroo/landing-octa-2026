@@ -1,0 +1,76 @@
+{
+  "xadrezes": [
+    {
+      "nome": "grade",
+      "lado": 242,
+      "grafite": 0.803,
+      "fios": [
+        {
+          "chave": "fragilidade",
+          "tinta": 0.0444
+        },
+        {
+          "chave": "resistencia",
+          "tinta": 0.0179
+        }
+      ],
+      "origem": "grade.png"
+    },
+    {
+      "nome": "barra",
+      "lado": 242,
+      "grafite": 0.784,
+      "fios": [
+        {
+          "chave": "resistencia",
+          "tinta": 0.087
+        },
+        {
+          "chave": "jardim",
+          "tinta": 0.028
+        }
+      ],
+      "origem": "barra.png"
+    },
+    {
+      "nome": "cruzado",
+      "lado": 242,
+      "grafite": 0.612,
+      "fios": [
+        {
+          "chave": "jardim",
+          "tinta": 0.0502
+        },
+        {
+          "chave": "pertencer",
+          "tinta": 0.0389
+        },
+        {
+          "chave": "resistencia",
+          "tinta": 0.0246
+        },
+        {
+          "chave": "fragilidade",
+          "tinta": 0.0076
+        },
+        {
+          "chave": "linho",
+          "tinta": 0.0059
+        }
+      ],
+      "origem": "cruzado.png"
+    }
+  ],
+  "pecas": [
+    {
+      "nome": "retalho",
+      "aspect": 0.714,
+      "origem": "retalho.jpeg"
+    },
+    {
+      "nome": "bordado",
+      "aspect": 0.971,
+      "origem": "bordado.jpeg"
+    }
+  ]
+}

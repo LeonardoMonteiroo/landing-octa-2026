@@ -1,0 +1,52 @@
+[
+  {
+    "nome": "alicia",
+    "aspect": 1.011,
+    "origem": "tecido-01.jpg"
+  },
+  {
+    "nome": "chiffon",
+    "aspect": 0.983,
+    "origem": "tecido-02.jpg"
+  },
+  {
+    "nome": "couro-sintetico",
+    "aspect": 1.018,
+    "origem": "tecido-03.png"
+  },
+  {
+    "nome": "sarja",
+    "aspect": 0.993,
+    "origem": "tecido-04.jpg"
+  },
+  {
+    "nome": "la-acrilica",
+    "aspect": 1.001,
+    "origem": "tecido-05.jpg"
+  },
+  {
+    "nome": "setta",
+    "aspect": 0.994,
+    "origem": "tecido-06.png"
+  },
+  {
+    "nome": "tinker",
+    "aspect": 0.965,
+    "origem": "tecido-07.jpg"
+  },
+  {
+    "nome": "tule-malha",
+    "aspect": 1.121,
+    "origem": "tecido-08.jpg"
+  },
+  {
+    "nome": "lidel",
+    "aspect": 0.996,
+    "origem": "tecido-09.jpg"
+  },
+  {
+    "nome": "denim",
+    "aspect": 0.992,
+    "origem": "tecido-10.png"
+  }
+]

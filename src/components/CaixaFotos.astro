@@ -1,0 +1,331 @@
+---
+/**
+ * Caixa de fotos: o arranjo da Persona — a tarde de domingo esvaziando a caixa
+ * da família em cima da mesa. A seção prende, as fotos aparecem como uma pilha
+ * só no meio da mesa, e cada volta de rolagem tira a de cima e a larga num
+ * canto — enquanto o conto, parado à esquerda, vai acendendo palavra por
+ * palavra.
+ *
+ * Duas camadas, como o Trendboard:
+ *
+ * - Camada de baixo (sem JS, movimento reduzido, celular): o conto em cima e as
+ *   fotos numa grade comum embaixo. Tudo visível, nada posicionado por JS.
+ * - Camada de cima (`min-width: 768px` + movimento): a classe `.caixa-armada`
+ *   troca o layout — palco de 100svh, conto à esquerda, mesa à direita, fotos
+ *   `position: absolute` empilhadas no centro. A classe entra e sai **dentro**
+ *   do `mm.add`; se o matchMedia reverter e ela ficar, a seção vira uma pilha
+ *   de fotos uma em cima da outra que nunca se abre.
+ *
+ * O pin é no `.palco`, um `<div>` simples — nunca no `<figure>` full-bleed.
+ *
+ * O GSAP anima o wrapper `[data-foto-caixa]`; o `.gira` de dentro é que carrega
+ * o `rotate: var(--giro)` de repouso. Mesmo motivo do `.peca` e do mural: não
+ * empilhar transform do GSAP em cima de um `rotate:` do CSS.
+ */
+import { Image } from "astro:assets";
+import type { FotoParede } from "../lib/paredes";
+
+interface Props {
+  fotos: FotoParede[];
+  paragrafos: string[];
+  corCapitular?: string;
+  rotulo: string;
+}
+
+const {
+  fotos,
+  paragrafos,
+  corCapitular = "var(--cor-resistencia)",
+  rotulo,
+} = Astro.props;
+
+const [abertura = "", ...demais] = paragrafos;
+const [inicial = "", ...resto] = [...abertura];
+---
+
+<figure class="painel-caixa relative left-1/2 right-1/2 -mx-[50vw] w-screen" aria-label={rotulo}>
+  {/* Div simples e sem margem negativa: é este que o ScrollTrigger pina. */}
+  <div class="palco" data-palco-caixa style={`--cor-capitular:${corCapitular}`}>
+    <div class="conto" data-conto-caixa>
+      <p class="abertura"><span class="inicial">{inicial}</span>{resto.join("")}</p>
+      {demais.map((p) => <p>{p}</p>)}
+    </div>
+
+    <div class="mesa" data-mesa-caixa>
+      {
+        fotos.map((f) => (
+          <div class="foto-caixa" data-foto-caixa style={`--aspect:${f.aspect}`}>
+            <div class="gira papel" style={`--giro:${f.giro}deg`}>
+              <Image
+                src={f.src}
+                alt={f.alt}
+                widths={[240, 400, 560]}
+                sizes="(min-width: 768px) 18rem, 45vw"
+                format="webp"
+                quality={84}
+              />
+            </div>
+          </div>
+        ))
+      }
+    </div>
+  </div>
+</figure>
+
+<style>
+  /* ── Camada de baixo: conto em cima, fotos numa grade ───────────────────── */
+  .palco {
+    width: min(100% - 2rem, 78rem);
+    margin-inline: auto;
+    padding-block: clamp(3rem, 8vw, 6rem);
+  }
+
+  .conto {
+    max-width: 40rem;
+    margin-bottom: clamp(2.5rem, 6vw, 4rem);
+    font-family: var(--font-conto);
+  }
+
+  .conto p {
+    margin: 0;
+    font-size: clamp(1.05rem, 1.6vw, 1.35rem);
+    line-height: 1.65;
+    text-wrap: pretty;
+    hyphens: auto;
+  }
+
+  .conto p + p {
+    margin-top: 1.1em;
+  }
+
+  .inicial {
+    float: left;
+    margin-right: 0.07em;
+    font-family: var(--font-display);
+    font-size: 3.6em;
+    line-height: 0.84;
+    color: var(--cor-capitular);
+  }
+
+  .mesa {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: clamp(0.8rem, 2.5vw, 1.6rem);
+  }
+
+  @media (min-width: 640px) {
+    .mesa {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+  }
+
+  /* Sem filete: a foto sangra até a borda do papel. O `.papel` fica pela
+     sombra baixa, que é o que a mantém encostada na mesa — o fundo claro dele
+     some por baixo da imagem, que agora cobre a caixa inteira. */
+  .gira {
+    rotate: var(--giro);
+    line-height: 0;
+  }
+
+  .foto-caixa :global(img) {
+    display: block;
+    width: 100%;
+    height: auto;
+  }
+
+  /* ── Camada de cima: a mesa armada ──────────────────────────────────────── */
+  /* Só entra pela classe que o mm.add põe. Nada aqui esconde conteúdo: o que
+     muda é o posicionamento; a opacidade das fotos nunca é tocada, e a do conto
+     só cai até 0,2 no tween — e só com movimento. */
+  .palco.caixa-armada {
+    display: grid;
+    grid-template-columns: 38% 1fr;
+    align-items: center;
+    gap: clamp(1.5rem, 4vw, 3.5rem);
+    width: 100%;
+    min-height: 100svh;
+    padding: 0 clamp(1.5rem, 5vw, 4rem);
+    overflow: hidden;
+  }
+
+  .caixa-armada .conto {
+    max-width: none;
+    margin-bottom: 0;
+  }
+
+  .caixa-armada .conto p {
+    font-size: clamp(1rem, 1.35vw, 1.3rem);
+  }
+
+  /* A mesa: uma caixa com tamanho próprio, para as casas onde as fotos pousam
+     serem medidas dela e não da tela inteira. As fotos saem do fluxo e nascem
+     todas no mesmo ponto — a pilha. */
+  .caixa-armada .mesa {
+    position: relative;
+    display: block;
+    height: 84svh;
+  }
+
+  /* A foto sai do tamanho da **casa**, medida da mesa pelo JS, e não de um
+     número fixo: com 22rem numa casa de 10rem cada uma cobria a vizinha quase
+     inteira e a mesa virava um monte só. O `--sobra` é o quanto ela passa da
+     casa — é dele, e só dele, que vem a sobreposição. Os `rem` no `var()` são
+     o que vale antes da primeira medida. */
+  .caixa-armada .foto-caixa {
+    --sobra: 1.18;
+
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    width: min(
+      calc(var(--casa-l, 14rem) * var(--sobra)),
+      calc(var(--aspect) * var(--casa-a, 10rem) * var(--sobra))
+    );
+  }
+</style>
+
+<script>
+  import { gsap, mm, SplitText, COM_MOVIMENTO, prioridade } from "../lib/motion";
+  import { acaso } from "../lib/acaso";
+
+  mm.add(`${COM_MOVIMENTO} and (min-width: 768px)`, () => {
+    const palcos = gsap.utils.toArray<HTMLElement>("[data-palco-caixa]");
+    if (!palcos.length) return;
+
+    // Arma o layout antes de medir qualquer coisa: as casas da mesa saem do
+    // tamanho que a .mesa tem *já armada*, e não do da grade da camada de baixo.
+    for (const palco of palcos) palco.classList.add("caixa-armada");
+
+    for (const palco of palcos) {
+      const mesa = palco.querySelector<HTMLElement>("[data-mesa-caixa]");
+      const conto = palco.querySelector<HTMLElement>("[data-conto-caixa]");
+      if (!mesa) continue;
+
+      const fotos = gsap.utils.toArray<HTMLElement>("[data-foto-caixa]", mesa);
+      const n = fotos.length;
+      if (!n) continue;
+
+      /**
+       * A grade de casas da mesa: quantas cabem e que tamanho tem cada uma.
+       *
+       * A área de pouso é menor que a mesa: a casa dá a posição do **centro**
+       * da foto, e a foto tem meia altura para cada lado. Sem essa folga, a
+       * fileira de cima nasce com o centro a meia-casa da borda e o palco, que
+       * é `overflow: hidden`, corta o topo dela.
+       */
+      const grade = () => {
+        const l = mesa.clientWidth * 0.86;
+        const a = mesa.clientHeight * 0.8;
+        const colunas = Math.max(3, Math.min(6, Math.round(Math.sqrt((n * l) / a))));
+        const linhas = Math.ceil(n / colunas);
+        return { l, a, colunas, linhas, larguraCasa: l / colunas, alturaCasa: a / linhas };
+      };
+
+      /**
+       * Passa a medida da casa para o CSS, que dimensiona a foto a partir dela.
+       * Sem isto a foto tem tamanho fixo e a casa não — e numa mesa estreita
+       * elas pousam quase uma em cima da outra.
+       */
+      const medirCasa = () => {
+        const { larguraCasa, alturaCasa } = grade();
+        mesa.style.setProperty("--casa-l", `${larguraCasa}px`);
+        mesa.style.setProperty("--casa-a", `${alturaCasa}px`);
+      };
+      medirCasa();
+
+      /**
+       * Onde a foto `i` pousa, em pixels a partir do centro da mesa.
+       *
+       * `k` é a ordem em que ela foi largada (a de cima da pilha primeiro), e é
+       * por `k` que a casa é escolhida: a mesa vai sendo ocupada da esquerda
+       * para a direita, de cima para baixo, como quem vai largando. O jitter é
+       * determinístico (acaso) — a mesma foto cai sempre no mesmo canto, a cada
+       * refresh e a cada build.
+       *
+       * Função, não número: o ScrollTrigger reavalia a cada refresh, então
+       * girar a tela remede a mesa em vez de deixar as fotos fora dela.
+       */
+      const casa = (i: number) => {
+        const { l, a, colunas, larguraCasa, alturaCasa } = grade();
+        const k = n - 1 - i;
+        return {
+          x:
+            ((k % colunas) + 0.5) * larguraCasa -
+            l / 2 +
+            (acaso(i, 31) - 0.5) * larguraCasa * 0.26,
+          y:
+            (Math.floor(k / colunas) + 0.5) * alturaCasa -
+            a / 2 +
+            (acaso(i, 37) - 0.5) * alturaCasa * 0.26,
+        };
+      };
+
+      // A pilha. xPercent/yPercent centram a foto no ponto left/top 50% sem
+      // depender do tamanho dela, que varia com a proporção.
+      gsap.set(fotos, { xPercent: -50, yPercent: -50 });
+      fotos.forEach((el, i) =>
+        gsap.set(el, { zIndex: 100 + i, rotation: (acaso(i, 43) - 0.5) * 9 }),
+      );
+
+      const tl = gsap.timeline({
+        scrollTrigger: {
+          trigger: palco,
+          start: "top top",
+          // Uma volta de rolagem por foto. Função para remedir no refresh.
+          end: () => `+=${Math.round(n * 0.4 * window.innerHeight)}`,
+          pin: true,
+          anticipatePin: 1,
+          scrub: 0.7,
+          invalidateOnRefresh: true,
+          refreshPriority: prioridade.persona,
+          // A casa muda de tamanho quando a mesa muda; a foto lê o tamanho
+          // dela pelo CSS, então tem que ser remedida no mesmo refresh.
+          onRefresh: medirCasa,
+        },
+      });
+
+      for (let k = 0; k < n; k++) {
+        const i = n - 1 - k;
+        // Quem já pousou fica abaixo da pilha (que começa em 100), e a última
+        // largada fica por cima das anteriores.
+        tl.set(fotos[i], { zIndex: 50 + k }, k).to(
+          fotos[i],
+          {
+            x: () => casa(i).x,
+            y: () => casa(i).y,
+            rotation: (acaso(i, 41) - 0.5) * 30,
+            ease: "power2.out",
+            duration: 0.9,
+          },
+          k,
+        );
+      }
+
+      // O conto acende palavra por palavra ao longo da mesma timeline: a última
+      // palavra chega junto com a última foto. Nunca abaixo de 0,2 — o texto é
+      // conteúdo e não pode sumir, aqui só perde peso.
+      //
+      // Corte por palavra, não por letra: a palavra sobrevive a uma requebra de
+      // linha quando a fonte variável termina de carregar, e o tween é só de
+      // opacidade, que não depende de onde o pedaço foi parar.
+      if (conto) {
+        const corte = SplitText.create(conto, { type: "words", aria: "auto" });
+        tl.fromTo(
+          corte.words,
+          { opacity: 0.2 },
+          {
+            opacity: 1,
+            ease: "none",
+            duration: 0.6,
+            stagger: { amount: Math.max(0.1, n - 0.6) },
+          },
+          0,
+        );
+      }
+    }
+
+    return () => {
+      for (const palco of palcos) palco.classList.remove("caixa-armada");
+    };
+  });
+</script>

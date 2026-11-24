@@ -1,0 +1,126 @@
+---
+/**
+ * As oito harmonias: as quatro duplas e os quatro trios que a coleção usa, cada
+ * uma como a pilha de meadas da prancha original.
+ *
+ * Como na cartela, a meada é desenhada uma vez num <defs> e as vinte cópias são
+ * <use> com as duas cores entrando por custom property. Cada cópia leva o giro,
+ * a escala e o espelho que scripts/extract-cores.mjs mediu no arquivo de
+ * origem, e é por isso que as pilhas ficam iguais às da prancha sem trazer os
+ * oito SVGs (930 KB) para dentro da página.
+ *
+ * Os tamanhos são relativos de verdade: cada pilha ocupa a largura que tem no
+ * material, em múltiplos de um `--um` comum. É o que mantém os trios maiores
+ * que as duplas, como a designer desenhou — uma grade de células iguais jogaria
+ * essa informação fora.
+ */
+import { harmonias, legenda, cor } from "../data/cores";
+import { meada, formasHarmonia } from "../data/formas-cores";
+
+const [pivoX, pivoY] = meada.pivo;
+
+/** translate → rotate → escala (com espelho) → leva o pivô da forma pra origem. */
+function assentar(m: (typeof formasHarmonia)[string]["meadas"][number]) {
+  const sy = m.espelho ? -m.escala : m.escala;
+  return `translate(${m.cx} ${m.cy}) rotate(${m.giro}) scale(${m.escala} ${sy}) translate(${-pivoX} ${-pivoY})`;
+}
+---
+
+<div class="campo">
+  <ul class="harmonias">
+    {
+      harmonias.map((chave) => {
+        const forma = formasHarmonia[chave];
+        return (
+          <li class="harmonia" style={`--larg:${forma.largura}; --alt:${forma.altura}`}>
+            <div class="pilha">
+              <svg viewBox={`0 0 ${forma.largura} ${forma.altura}`} aria-hidden="true" focusable="false">
+                {forma.meadas.map((m) => {
+                  const c = cor(m.cor);
+                  return (
+                    <use
+                      href="#forma-meada"
+                      style={`--corpo:${c.corpo}; --fio:${c.hex}`}
+                      transform={assentar(m)}
+                    />
+                  );
+                })}
+              </svg>
+            </div>
+            {/* Só para leitor de tela: as meadas são `aria-hidden`, e sem
+                isto o item da lista não teria conteúdo nenhum. */}
+            <p class="sr-only">{legenda(chave)}</p>
+          </li>
+        );
+      })
+    }
+  </ul>
+</div>
+
+{/* A meada, uma vez. Sem tamanho e fora do fluxo: só serve de fonte pro <use>. */}
+<svg class="molde" aria-hidden="true" focusable="false">
+  <defs>
+    <g id="forma-meada">
+      {
+        meada.camadas.map((camada) => (
+          <path
+            transform={`translate(${camada.dx} ${camada.dy})`}
+            d={camada.d}
+            fill={camada.papel === "fio" ? "var(--fio)" : "var(--corpo)"}
+          />
+        ))
+      }
+    </g>
+  </defs>
+</svg>
+
+<style>
+  .molde {
+    position: absolute;
+    width: 0;
+    height: 0;
+    overflow: hidden;
+  }
+
+  /* O container das container queries: é da largura dele que sai o --um. */
+  .campo {
+    container-type: inline-size;
+  }
+
+  .harmonias {
+    /* Um passo comum às oito pilhas — elas guardam as larguras que têm no
+       material (149 a 181), então um passo só preserva o tamanho relativo. */
+    --um: clamp(0.85px, 0.12cqw, 1.45px);
+
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    column-gap: clamp(1.25rem, 4cqw, 3.5rem);
+    row-gap: clamp(2rem, 5cqw, 3.5rem);
+  }
+
+  .harmonia {
+    display: flex;
+    flex-direction: column;
+    width: calc(var(--larg) * var(--um));
+  }
+
+  /* margin-top:auto encosta as pilhas na mesma linha de base dentro da
+     fileira — as meadas ficam pousadas, não penduradas.
+     A pilha chegou a ter uma sombra de contato, como o lineup do trendboard, e
+     ela saiu: lá os recortes são fotografia e precisam de um chão; aqui o
+     desenho é chapado, como na prancha, e a sombra só acrescentava um volume
+     que a ilustração não tem. */
+  .pilha {
+    margin-top: auto;
+  }
+
+  .pilha svg {
+    display: block;
+    width: 100%;
+    height: auto;
+  }
+</style>

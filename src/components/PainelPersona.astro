@@ -1,0 +1,31 @@
+---
+/**
+ * Painel da persona: as 15 fotos do zip de referência e o trecho do conto.
+ *
+ * O arranjo é a Caixa de fotos: a seção prende, as fotos entram como uma pilha
+ * no meio da mesa e cada volta de rolagem larga a de cima num canto, enquanto o
+ * conto acende palavra por palavra ao lado. Antes era uma parede de colagem (o
+ * Mural.astro, dividido com o Mood) com a folha do conto pregada entre as fotos.
+ *
+ * A matéria (as fotos na ordem da parede) vem de lib/paredes.ts, dividida com
+ * o Mood; o que muda de um painel para o outro é só o arranjo.
+ *
+ * Ver scripts/extract-painel.mjs para a extração dos recortes.
+ */
+import CaixaFotos from "./CaixaFotos.astro";
+import { paredePersona } from "../lib/paredes";
+
+interface Props {
+  /** Trecho do conto, parado ao lado da mesa (ver index.astro). */
+  paragrafos?: string[];
+}
+
+const { paragrafos = [] } = Astro.props;
+---
+
+<CaixaFotos
+  fotos={paredePersona()}
+  paragrafos={paragrafos}
+  corCapitular="var(--cor-resistencia)"
+  rotulo="Painel de persona: fotografias do cotidiano dela — praia, cozinha, costura, cinema, retratos de família — largadas na mesa foto a foto, ao lado do trecho do conto."
+/>

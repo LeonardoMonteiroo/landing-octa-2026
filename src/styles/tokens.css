@@ -1,0 +1,187 @@
+@import "tailwindcss";
+
+@import "@fontsource-variable/playfair-display";
+@import "@fontsource/bodoni-moda";
+@import "@fontsource-variable/eb-garamond";
+
+:root {
+  /* Cartela de Cores — Triádico (ver src/data/cores.ts) */
+  --cor-resistencia: #3d1216;
+  --cor-pertencer: #2c384f;
+  --cor-ninho: #c19f53;
+  --cor-jardim: #434429;
+  --cor-fragilidade: #878881;
+  --cor-ruptura: #030405;
+  --cor-linho: #c3c3c0;
+  --cor-linho-claro: #e2e2e1;
+  --cor-rosa-queimado: #823642; /* mãos, estrelas — só decorativo */
+
+  /* Acento vivo — trocado ao clicar numa cor na Cartela de Cores. */
+  --accent: var(--cor-resistencia);
+
+  --font-display: "Playfair Display Variable", "Playfair Display", Georgia, serif;
+  --font-conto: "Bodoni Moda", "Playfair Display Variable", Georgia, serif;
+  --font-ficha: "EB Garamond Variable", "EB Garamond", Georgia, serif;
+
+  /* Escala de tempo — do toque instantâneo ao gesto lento de virar página. */
+  --dur-instante: 120ms;
+  --dur-rapida: 280ms;
+  --dur-media: 600ms;
+  --dur-lenta: 1100ms;
+  --dur-ambiente: 7s; /* respiro das peças do painel (ver flutuar) */
+
+  /* Curvas nomeadas pelo gesto, não pela matemática. O GSAP não lê var(),
+     então src/lib/motion.ts espelha cada uma com o ease equivalente:
+     tecido ↔ expo.out · fio ↔ power3.out · agulha ↔ power2.inOut */
+  --curva-tecido: cubic-bezier(0.16, 1, 0.3, 1); /* cai e assenta */
+  --curva-fio: cubic-bezier(0.22, 1, 0.36, 1); /* puxada, sem repique */
+  --curva-agulha: cubic-bezier(0.65, 0, 0.35, 1); /* entra e sai */
+
+  /* Deslocamento padrão de uma revelação. */
+  --desloc-revelacao: 1.25rem;
+
+  color-scheme: light;
+}
+
+@theme {
+  --color-resistencia: var(--cor-resistencia);
+  --color-pertencer: var(--cor-pertencer);
+  --color-ninho: var(--cor-ninho);
+  --color-jardim: var(--cor-jardim);
+  --color-fragilidade: var(--cor-fragilidade);
+  --color-ruptura: var(--cor-ruptura);
+  --color-linho: var(--cor-linho);
+  --color-linho-claro: var(--cor-linho-claro);
+  --color-rosa-queimado: var(--cor-rosa-queimado);
+
+  --font-display: var(--font-display);
+  --font-conto: var(--font-conto);
+  --font-ficha: var(--font-ficha);
+
+  /* Vira ease-tecido, ease-fio, ease-agulha. As durações ficam só no :root:
+     o Tailwind v4 não tem namespace --duration-*, duration-600 é bare value. */
+  --ease-tecido: var(--curva-tecido);
+  --ease-fio: var(--curva-fio);
+  --ease-agulha: var(--curva-agulha);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+/* Enquanto a Lenis não sobe — e se o JS falhar — o scroll suave é o nativo.
+   Ela põe a classe .lenis no <html> ao iniciar e assume daí em diante. */
+html:not(.lenis) {
+  scroll-behavior: smooth;
+}
+
+/* As duas regras do lenis.css que importam aqui, inline: o resto do arquivo
+   cobre casos que este projeto não usa (autoToggle, scroll aninhado). */
+html.lenis,
+html.lenis body {
+  height: auto;
+}
+
+.lenis.lenis-smooth iframe {
+  pointer-events: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+  * {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* Estados iniciais da abertura. Só existem enquanto html.pre-anima estiver
+   presente, e quem põe a classe (script inline no <head> do BaseLayout) só
+   age quando o usuário não pediu menos movimento — com watchdog de 3 s, caso
+   o bundle de movimento falhe. Quem esconde é quem revela: a timeline da Capa
+   tira a classe no onStart. Nenhum outro CSS pode zerar opacidade. */
+html.pre-anima [data-capa-linha],
+html.pre-anima [data-capa-titulo],
+html.pre-anima [data-capa-estrela] {
+  opacity: 0;
+}
+
+body {
+  margin: 0;
+  background: var(--cor-linho);
+  color: var(--cor-resistencia);
+  font-family: var(--font-ficha);
+}
+
+/* Papel: impresso pregado na parede. Filete claro em volta do sangramento e
+   sombra baixa e curta, de coisa encostada — não a sombra difusa de card
+   flutuando. Quem usa é o mural da Persona e as folhas de conto; o
+   preenchimento do filete fica com quem chama, e o que cada um pede é
+   diferente: a folha de texto quer bastante, e as fotos do Mood e da Persona
+   não querem nenhum — elas sangram até a borda e aproveitam daqui só a
+   sombra. */
+.papel {
+  background: var(--cor-linho-claro);
+  box-shadow: 0 0.35rem 0.75rem -0.3rem rgb(0 0 0 / 0.42);
+}
+
+/* Textura de linho sutil, reproduzindo o fundo do book impresso sem baixar imagem. */
+.textura-linho {
+  background-image:
+    repeating-linear-gradient(0deg, rgb(0 0 0 / 0.025) 0px, transparent 1px, transparent 2px),
+    repeating-linear-gradient(90deg, rgb(0 0 0 / 0.025) 0px, transparent 1px, transparent 2px);
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.capitular::first-letter {
+  font-family: var(--font-display);
+  font-size: 4.5em;
+  float: left;
+  line-height: 0.85;
+  padding-right: 0.08em;
+  padding-top: 0.02em;
+}
+
+/* Anel de foco: tracejado, como as linhas de costura do book, e em
+   currentColor — assim ele acompanha o texto de cada capítulo (escuro
+   sobre o linho, claro sobre o navy) sem precisar de uma regra por seção. */
+:focus-visible {
+  outline: 2px dashed currentColor;
+  outline-offset: 3px;
+}
+
+/* Atalho para pular o sumário e cair direto no book. Só aparece quando
+   recebe foco pelo teclado. */
+.pular-para-conteudo {
+  position: fixed;
+  top: 0.5rem;
+  left: 0.5rem;
+  z-index: 60;
+  transform: translateY(-160%);
+  padding: 0.6rem 1.1rem;
+  background: var(--cor-linho-claro);
+  color: var(--cor-resistencia);
+  font-family: var(--font-ficha);
+  font-size: 0.95rem;
+  text-decoration: none;
+  border: 1px dashed var(--cor-resistencia);
+  transition: transform 0.15s ease-out;
+}
+
+.pular-para-conteudo:focus {
+  transform: translateY(0);
+}

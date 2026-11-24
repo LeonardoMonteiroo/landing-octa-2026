@@ -1,0 +1,62 @@
+---
+/**
+ * Linha de costura fixa na margem esquerda: um traço tracejado que
+ * "costura" conforme o scroll avança, ecoando o motivo de linha
+ * tracejada recorrente no book (páginas de transição). Ignorado em
+ * telas muito estreitas para não brigar com o conteúdo.
+ */
+---
+
+<div
+  class="pointer-events-none fixed inset-y-0 left-2 z-40 hidden w-6 sm:block"
+  aria-hidden="true"
+>
+  <svg id="linha-costura-svg" width="24" height="100%" viewBox="0 0 24 1000" preserveAspectRatio="none" class="h-full w-full">
+    <path
+      id="linha-costura-path"
+      d="M12,0 C20,60 4,120 12,180 C20,240 4,300 12,360 C20,420 4,480 12,540 C20,600 4,660 12,720 C20,780 4,840 12,900 C18,940 8,970 12,1000"
+      fill="none"
+      stroke="var(--cor-fragilidade)"
+      stroke-width="2"
+      stroke-linecap="round"
+      stroke-dasharray="6 8"
+    />
+  </svg>
+</div>
+
+<script>
+  import { gsap, mm, COM_MOVIMENTO, prioridade } from "../lib/motion";
+
+  const linha = document.getElementById("linha-costura-path") as SVGPathElement | null;
+
+  // Em tela estreita o wrapper é `hidden`, então nem vale criar o
+  // ScrollTrigger: a query combinada resolve movimento e largura de uma vez.
+  mm.add(`${COM_MOVIMENTO} and (min-width: 640px)`, () => {
+    if (!linha) return;
+
+    // O comprimento sai em unidades do viewBox, não em pixels de tela: o
+    // preserveAspectRatio="none" estica o traço, mas não o comprimento. Por
+    // isso, ao contrário da versão anterior, não precisa remedir no resize.
+    const comprimento = linha.getTotalLength();
+    linha.style.strokeDasharray = `${comprimento}`;
+
+    gsap.fromTo(
+      linha,
+      { strokeDashoffset: comprimento },
+      {
+        strokeDashoffset: 0,
+        ease: "none",
+        scrollTrigger: {
+          trigger: document.documentElement,
+          start: "top top",
+          end: "bottom bottom",
+          scrub: 0.4, // atraso leve: a linha parece estar sendo puxada
+          invalidateOnRefresh: true,
+          // Por último: a altura do documento só é a definitiva depois que
+          // todos os pins abriram seus espaçadores.
+          refreshPriority: prioridade.pagina,
+        },
+      },
+    );
+  });
+</script>

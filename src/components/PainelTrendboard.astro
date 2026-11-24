@@ -1,0 +1,238 @@
+---
+/**
+ * Painel do trendboard: os 13 looks do zip de referência montados como um
+ * lineup — todos com o pé na mesma linha de base e em escala relativa coerente,
+ * que é a forma como uma coleção se apresenta. O trecho do conto é o primeiro
+ * painel da fila: você lê e então caminha para dentro da coleção.
+ *
+ * A altura de cada peça vem de src/data/trendboard.ts, escrita à mão em % da
+ * altura do lineup — é ela que faz as silhuetas lerem como gente do mesmo
+ * tamanho em vez de PNG solto.
+ *
+ * O fundo da seção é o Jardim, escuro demais para os looks pretos; por isso o
+ * lineup não pisa direto nele, e sim numa faixa clara de ciclorama — o mesmo
+ * fundo infinito de estúdio de onde esses recortes saíram.
+ *
+ * Ver scripts/extract-painel.mjs para a extração dos recortes.
+ */
+import { Image } from "astro:assets";
+import { trendboard, ordemTrendboard } from "../data/trendboard";
+import FolhaConto from "./FolhaConto.astro";
+
+interface Props {
+  /** Trecho do conto, primeiro painel do lineup (ver index.astro). */
+  paragrafos?: string[];
+}
+
+const { paragrafos = [] } = Astro.props;
+
+const arquivos = import.meta.glob<{ default: ImageMetadata }>("../assets/trendboard/*.webp", {
+  eager: true,
+});
+
+const fonte = (nome: string) => {
+  const mod = arquivos[`../assets/trendboard/${nome}.webp`];
+  if (!mod) throw new Error(`trendboard: falta src/assets/trendboard/${nome}.webp`);
+  return mod.default;
+};
+
+const lineup = ordemTrendboard.map((n) => {
+  const look = trendboard.find((l) => l.nome === n);
+  if (!look) throw new Error(`trendboard: ordemTrendboard cita "${n}", que não existe em trendboard[]`);
+  return look;
+});
+---
+
+<figure class="painel-trendboard relative left-1/2 right-1/2 -mx-[50vw] w-screen">
+  {/* Div simples e sem margem negativa: é este que o ScrollTrigger pina. */}
+  <div class="palco" data-palco-trend>
+    <div class="ciclorama" aria-hidden="true"></div>
+    <div
+      class="tira"
+      data-tira-trend
+      tabindex="0"
+      role="region"
+      aria-label="Lineup dos looks da coleção"
+    >
+      <div class="lineup" data-lineup-trend>
+        {
+          paragrafos.length > 0 && (
+            <div class="folha-look">
+              <FolhaConto
+                paragrafos={paragrafos}
+                corCapitular="var(--cor-jardim)"
+                corEstrela="var(--cor-fragilidade)"
+              />
+            </div>
+          )
+        }
+        {
+          lineup.map((l) => (
+            <div class="look" style={`--altura:${l.altura}`}>
+              <Image
+                src={fonte(l.nome)}
+                alt={l.alt}
+                widths={[200, 320, 480]}
+                sizes="(min-width: 1024px) 16rem, 40vw"
+                format="webp"
+                quality={84}
+              />
+            </div>
+          ))
+        }
+      </div>
+    </div>
+  </div>
+
+  <figcaption class="sr-only">
+    Trendboard da coleção: treze looks de passarela recortados e alinhados lado a lado, do
+    xadrez de alfaiataria aos volumes esculturais em preto.
+  </figcaption>
+</figure>
+
+<style>
+  .palco {
+    position: relative;
+    display: flex;
+    align-items: center;
+    min-height: 100svh;
+    overflow: hidden;
+  }
+
+  /* Ciclorama: fundo infinito de estúdio. É o que dá contorno aos looks pretos
+     contra o verde-oliva da seção, e o que faz a linha de base ler como chão. */
+  .ciclorama {
+    position: absolute;
+    inset-inline: 0;
+    top: 12%;
+    bottom: 8%;
+    background: linear-gradient(
+      to bottom,
+      var(--cor-linho) 0%,
+      var(--cor-linho) 74%,
+      var(--cor-fragilidade) 100%
+    );
+  }
+
+  /* Camada 1, a que sempre funciona: rolagem horizontal nativa, com foco de
+     teclado. A camada 2 (o pin com scrub, no bloco de script abaixo) troca
+     isto por .tira-travada e desloca o lineup ela mesma. */
+  .tira {
+    position: relative;
+    width: 100%;
+    overflow-x: auto;
+    overflow-y: hidden;
+    scroll-snap-type: x proximity;
+    overscroll-behavior-x: contain;
+  }
+
+  .tira-travada {
+    overflow-x: hidden;
+  }
+
+  /* --linha é a altura de referência do lineup, e é dela que sai a altura de
+     cada look. Como as figuras não dependem mais de porcentagem do pai, a fila
+     pode usar min-height e crescer quando a folha do conto for mais alta que
+     as figuras — antes ela tinha altura fixa, a folha estourava e a .tira, que
+     é overflow-y: hidden por ser tira de rolagem horizontal, cortava o texto. */
+  .lineup {
+    --linha: min(72svh, 38rem);
+    display: flex;
+    align-items: flex-end;
+    gap: clamp(0.5rem, 1.4vw, 1.5rem);
+    width: max-content;
+    min-height: var(--linha);
+    padding-inline: clamp(1rem, 7vw, 7rem);
+    /* a sombra de contato desce um pouco abaixo do pé; sem esta folga a .tira,
+       que é overflow-y: hidden, cortava ela pela metade */
+    padding-block-end: 0.6rem;
+  }
+
+  .look {
+    position: relative;
+    height: calc(var(--altura) * var(--linha) / 100);
+    flex: none;
+    scroll-snap-align: center;
+  }
+
+  .look :global(img) {
+    height: 100%;
+    width: auto;
+    max-width: none;
+    display: block;
+  }
+
+  /* Sombra de contato no pé. Sem ela o lineup flutua sobre o ciclorama em vez
+     de pisar nele. */
+  .look::after {
+    content: "";
+    position: absolute;
+    left: 50%;
+    bottom: -0.4rem;
+    z-index: -1;
+    width: 82%;
+    height: 1.2rem;
+    translate: -50% 0;
+    background: radial-gradient(closest-side, rgb(18 20 12 / 0.42), transparent);
+  }
+
+  .folha-look {
+    flex: none;
+    width: min(26rem, 80vw);
+    scroll-snap-align: center;
+  }
+
+  /* A folha é papel apoiado no chão do ciclorama, como os looks. */
+  .folha-look :global(.folha-conto) {
+    box-shadow: 0 0.5rem 1rem -0.35rem rgb(0 0 0 / 0.5);
+  }
+</style>
+
+<script>
+  import { gsap, mm, COM_MOVIMENTO, prioridade } from "../lib/motion";
+
+  // Camada 2: um lineup se lê caminhando ao longo dele, então a seção prende e
+  // a fila anda de lado enquanto você rola. Só em tela larga e só para quem não
+  // pediu menos movimento — o matchMedia reverte o pin, o tween e a classe
+  // sozinho quando a query deixa de bater, e o que sobra é a tira de rolagem
+  // horizontal nativa da camada 1.
+  //
+  // Pinar aqui é seguro porque o alvo é o .palco, um <div> simples: o que não
+  // se pina é o <figure> full-bleed, cujas margens negativas e contexto de
+  // container-query se re-resolvem errado dentro do .pin-spacer.
+  //
+  // Não precisa de scrollerProxy: a Lenis move o scroll real do documento.
+  mm.add(`${COM_MOVIMENTO} and (min-width: 768px)`, () => {
+    const palco = document.querySelector<HTMLElement>("[data-palco-trend]");
+    const tira = document.querySelector<HTMLElement>("[data-tira-trend]");
+    const fila = document.querySelector<HTMLElement>("[data-lineup-trend]");
+    if (!palco || !tira || !fila) return;
+
+    tira.classList.add("tira-travada");
+    tira.scrollLeft = 0;
+
+    /** Quanto o lineup ainda tem para andar além da borda direita da tira. */
+    const curso = () => Math.max(1, fila.scrollWidth - tira.clientWidth);
+
+    gsap.to(fila, {
+      x: () => -curso(),
+      ease: "none",
+      scrollTrigger: {
+        trigger: palco,
+        start: "top top",
+        // Função, não número: o curso é remedido a cada refresh, então girar o
+        // telefone ou carregar as fontes não deixa o fim do pin no lugar errado.
+        end: () => `+=${curso()}`,
+        pin: true,
+        anticipatePin: 1,
+        scrub: 0.6,
+        invalidateOnRefresh: true,
+        refreshPriority: prioridade.trendboard,
+      },
+    });
+
+    return () => {
+      tira.classList.remove("tira-travada");
+    };
+  });
+</script>

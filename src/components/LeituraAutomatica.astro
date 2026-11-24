@@ -1,0 +1,310 @@
+---
+/**
+ * Leitura automática: o book se rola sozinho, no ritmo de quem lê.
+ *
+ * O contrário de uma âncora. A âncora salta o capítulo inteiro e passa por
+ * cima de toda a coreografia — aqui a página anda em velocidade constante,
+ * quadro a quadro, então pin, scrub e revelação acontecem exatamente como
+ * aconteceriam na mão. É também por isso que a armadilha do
+ * IntersectionObserver (elemento que nunca cruza a borda numa rolagem que
+ * salta) não encosta nesta seção: aqui não há salto nenhum.
+ *
+ * Três controles, na ordem em que a mão procura: andar/pausar, acelerar e
+ * parar. O de velocidade e o de parar só existem com a leitura em curso —
+ * parada, a barra é um convite de um botão só.
+ *
+ * E esse convite é escrito **só na capa**. Ali ele tem de se apresentar, que
+ * é onde o leitor decide como vai ler; dali para baixo a palavra vira peso
+ * sobre a composição de cada painel, e fica o ícone sozinho. O nome nunca se
+ * perde: ele está no `aria-label`, que não depende de onde a página está.
+ */
+---
+
+{/*
+  Nasce `hidden` porque é um controle que só existe com JS: sem o bundle, um
+  botão de "leitura automática" seria um botão morto. Vale aqui a regra de
+  quem esconde é quem revela — o script tira o atributo na primeira linha.
+*/}
+<div id="leitura-automatica" data-leitura data-estado="parada" hidden class="fixed bottom-4 right-4 z-50">
+  <div
+    role="group"
+    aria-label="Leitura automática"
+    class="font-ficha flex items-center gap-1 rounded-full border border-resistencia/25 bg-linho/95 p-1 text-xs uppercase tracking-[0.15em] text-resistencia shadow-[0_0.35rem_0.75rem_-0.3rem_rgb(0_0_0/0.42)] backdrop-blur"
+  >
+    {/* transition-colors, nunca `transition`: o utilitário largo do Tailwind
+        inclui opacity, e é ele que já apagou o botão da capa (ver CLAUDE.md). */}
+    <button
+      type="button"
+      data-leitura-alternar
+      aria-label="Iniciar a leitura automática"
+      class="flex shrink-0 items-center gap-2 rounded-full px-3 py-1.5 transition-colors hover:bg-resistencia/10"
+    >
+      {/* Os dois ícones moram num <span> cada, e não soltos: `hidden` é
+          propriedade de HTMLElement — em SVGElement ela não existe, e o
+          astro check reprova. */}
+      <span data-leitura-icone="andar" class="inline-flex">
+        <svg width="11" height="11" viewBox="0 0 12 12" aria-hidden="true" focusable="false">
+          <path d="M3 1.4 10.2 6 3 10.6Z" fill="currentColor"></path>
+        </svg>
+      </span>
+      <span data-leitura-icone="pausa" hidden class="inline-flex">
+        <svg width="11" height="11" viewBox="0 0 12 12" aria-hidden="true" focusable="false">
+          <rect x="2.6" y="1.4" width="2.6" height="9.2" fill="currentColor"></rect>
+          <rect x="6.8" y="1.4" width="2.6" height="9.2" fill="currentColor"></rect>
+        </svg>
+      </span>
+      <span data-leitura-rotulo>Leitura automática</span>
+    </button>
+
+    {/* O que falta no fator atual. É o número que o botão de acelerar encurta
+        — sem ele, "3×" é um rótulo que não promete nada. */}
+    <span data-leitura-restante hidden aria-hidden="true" class="shrink-0 px-1 tabular-nums text-resistencia/60"></span>
+
+    <button
+      type="button"
+      data-leitura-velocidade
+      hidden
+      aria-label="Velocidade da leitura: 1×. Acelerar."
+      class="shrink-0 rounded-full border border-resistencia/25 px-2.5 py-1.5 tabular-nums transition-colors hover:bg-resistencia/10"
+    >
+      1×
+    </button>
+
+    <button
+      type="button"
+      data-leitura-parar
+      hidden
+      aria-label="Parar a leitura automática"
+      class="flex shrink-0 items-center gap-2 rounded-full px-2.5 py-1.5 transition-colors hover:bg-resistencia/10"
+    >
+      <svg width="10" height="10" viewBox="0 0 12 12" aria-hidden="true" focusable="false">
+        <rect x="2" y="2" width="8" height="8" fill="currentColor"></rect>
+      </svg>
+      {/* A palavra fica sempre. Nada de `sr-only sm:not-sr-only` aqui: o
+          `.sr-only` deste projeto mora em tokens.css **fora de `@layer`**, e
+          regra sem camada vence utilitário em camada — o `sm:not-sr-only`
+          não reverte em largura nenhuma, e a palavra ficaria de 1×1px para
+          sempre. De todo jeito a pastilha tem 237px em curso e cabe inteira
+          num celular estreito. */}
+      <span>Parar</span>
+    </button>
+  </div>
+
+  {/* O que o controle diz a quem não o vê. Só as viradas de estado são
+      anunciadas — o tempo restante fica de fora, senão a leitura do book
+      vira a leitura de um relógio. */}
+  <p data-leitura-aviso role="status" aria-live="polite" class="sr-only"></p>
+</div>
+
+<script>
+  import { gsap, lenis } from "../lib/motion";
+
+  const caixa = document.getElementById("leitura-automatica");
+  const alternar = caixa?.querySelector<HTMLButtonElement>("[data-leitura-alternar]");
+  const botaoVelocidade = caixa?.querySelector<HTMLButtonElement>("[data-leitura-velocidade]");
+  const botaoParar = caixa?.querySelector<HTMLButtonElement>("[data-leitura-parar]");
+  const iconeAndar = caixa?.querySelector<HTMLElement>('[data-leitura-icone="andar"]');
+  const iconePausa = caixa?.querySelector<HTMLElement>('[data-leitura-icone="pausa"]');
+  const rotulo = caixa?.querySelector<HTMLElement>("[data-leitura-rotulo]");
+  const restante = caixa?.querySelector<HTMLElement>("[data-leitura-restante]");
+  const aviso = caixa?.querySelector<HTMLElement>("[data-leitura-aviso]");
+
+  if (caixa && alternar && botaoVelocidade && botaoParar && iconeAndar && iconePausa && rotulo && restante && aviso) {
+    caixa.hidden = false;
+
+    /**
+     * Velocidade em alturas de tela por segundo, não em pixels: o que o olho
+     * mede é quanto da página passou, e uma tela de 900px é mais pixel que
+     * uma de 720 pelo mesmo tanto de leitura. Dito assim, o passo também não
+     * muda quando a página cresce — e esta cresce.
+     *
+     * 0,22 é uma tela a cada ~4,5 s. Nas 22 telas de hoje dá ~2,4 min de
+     * ponta a ponta a 1×, e ~48 s a 3×. Foi escolhido pelo conto, que é o
+     * que se lê: a 0,3 um parágrafo cruzava a tela em 3 s, rápido demais
+     * para acompanhar. Quem quer só ver acelera.
+     */
+    const PASSO = 0.22;
+    const VELOCIDADES = [1, 1.5, 2, 3];
+
+    /** Teclas de rolagem: quem as usa está dirigindo, e quem dirige pausa. */
+    const TECLAS = new Set(["ArrowDown", "ArrowUp", "PageDown", "PageUp", "Home", "End", " ", "Spacebar"]);
+
+    let estado: "parada" | "andando" | "pausada" = "parada";
+    let indice = 0;
+    // A página abre na capa, e é lá que o convite é escrito por extenso.
+    let naCapa = true;
+    // Acumulador em ponto flutuante. O scroll da página é inteiro, e sem ele a
+    // fração de pixel de cada quadro morreria no arredondamento — a leitura
+    // sairia mais devagar que a velocidade pedida, e pior quanto mais lenta.
+    let alvo = 0;
+    let ultimoRestante = "";
+
+    const fator = () => VELOCIDADES[indice] ?? 1;
+    const porSegundo = () => window.innerHeight * PASSO * fator();
+    const rotuloVelocidade = () => String(fator()).replace(".", ",") + "×";
+
+    function anunciar(texto: string) {
+      aviso!.textContent = texto;
+    }
+
+    function contar() {
+      const s = Math.max(0, (lenis.limit - lenis.scroll) / porSegundo());
+      const texto = s >= 95 ? `≈ ${Math.round(s / 60)} min` : `≈ ${Math.max(5, Math.round(s / 5) * 5)} s`;
+      if (texto === ultimoRestante) return;
+      ultimoRestante = texto;
+      restante!.textContent = texto;
+    }
+
+    function etiquetarVelocidade() {
+      botaoVelocidade!.textContent = rotuloVelocidade();
+      botaoVelocidade!.setAttribute("aria-label", `Velocidade da leitura: ${rotuloVelocidade()}. Acelerar.`);
+    }
+
+    /** Uma função só desenha a barra inteira, a partir do estado. */
+    function pintar() {
+      const andando = estado === "andando";
+      const parada = estado === "parada";
+
+      caixa!.dataset.estado = estado;
+      caixa!.dataset.capa = naCapa ? "sim" : "nao";
+      iconeAndar!.hidden = andando;
+      iconePausa!.hidden = !andando;
+      rotulo!.textContent = parada ? "Leitura automática" : andando ? "Pausar" : "Continuar";
+      // Fora da capa, em repouso, fica só o ícone. Com a leitura em curso o
+      // rótulo volta em qualquer altura: ali a palavra é o que a mão procura.
+      // O `gap` do flex não abre espaço por filho escondido, então o botão
+      // fecha sozinho em torno do ícone.
+      rotulo!.hidden = parada && !naCapa;
+      alternar!.setAttribute(
+        "aria-label",
+        parada
+          ? "Iniciar a leitura automática"
+          : andando
+            ? "Pausar a leitura automática"
+            : "Continuar a leitura automática",
+      );
+
+      botaoVelocidade!.hidden = parada;
+      botaoParar!.hidden = parada;
+      restante!.hidden = !andando;
+      if (andando) contar();
+    }
+
+    function andar() {
+      // No fim do book não há o que rolar. Um botão que não faz nada é pior
+      // que um botão que diz por quê.
+      if (lenis.limit - lenis.scroll <= 2) {
+        anunciar("Você já está no fim do book.");
+        return;
+      }
+      // Reassume de onde a página está agora: entre a pausa e a retomada o
+      // usuário pode ter rolado na mão ou clicado numa âncora do sumário.
+      alvo = lenis.scroll;
+      const retomando = estado === "pausada";
+      estado = "andando";
+      pintar();
+      anunciar(retomando ? "Leitura automática retomada." : `Leitura automática a ${rotuloVelocidade()}.`);
+    }
+
+    function pausar(anuncio = "Leitura automática pausada.") {
+      if (estado !== "andando") return;
+      estado = "pausada";
+      pintar();
+      anunciar(anuncio);
+    }
+
+    function parar(anuncio = "Leitura automática encerrada.") {
+      estado = "parada";
+      // A velocidade volta com ela: senão a próxima leitura começaria a 3×
+      // sem ninguém ter pedido.
+      indice = 0;
+      etiquetarVelocidade();
+      pintar();
+      anunciar(anuncio);
+    }
+
+    gsap.ticker.add((_tempo, delta) => {
+      if (estado !== "andando") return;
+
+      // Se o scroll saiu de onde o deixamos, quem mandou foi outro: um refresh
+      // do ScrollTrigger reposicionando a página, uma âncora ainda em curso. O
+      // acumulador aceita o fato em vez de puxar a página de volta.
+      if (Math.abs(lenis.scroll - alvo) > 2) alvo = lenis.scroll;
+
+      // O lagSmoothing está desligado em motion.ts, então um quadro perdido
+      // chega aqui como um delta enorme — e viraria salto, que é justamente o
+      // que esta seção não faz. Teto de 100ms.
+      alvo = Math.min(alvo + (porSegundo() * Math.min(delta, 100)) / 1000, lenis.limit);
+
+      // `immediate` porque a interpolação é nossa: o passo já é pequeno e
+      // constante, e é o que faz a travessia sair linear em vez de pulsar. A
+      // Lenis emite o evento de scroll na mesma linha (ver o ramo immediate em
+      // lenis.mjs), então o ScrollTrigger atualiza neste mesmo quadro. Com
+      // prefers-reduced-motion ela força `immediate` sozinha em scroll
+      // programático — o caminho é o mesmo nos dois modos, sem ramo extra.
+      lenis.scrollTo(alvo, { immediate: true, force: true });
+
+      contar();
+      if (alvo >= lenis.limit - 0.5) parar("Fim do book.");
+    });
+
+    // Quem diz se ainda estamos na capa é um IntersectionObserver, e não uma
+    // medida guardada: o navegador recalcula a interseção a cada quadro e
+    // nada aqui envelhece com um refresh do ScrollTrigger. A armadilha do IO
+    // que nunca avisa (elemento que passa de baixo para cima da tela sem
+    // cruzar a borda) não alcança este caso: a capa **está** na tela quando a
+    // página abre, então toda saída dela é uma mudança de estado, e mudança
+    // de estado o IO sempre entrega. E se falhasse, o pior seria uma palavra
+    // a mais na tela — não conteúdo escondido.
+    const capa = document.getElementById("capa");
+    if (capa && "IntersectionObserver" in window) {
+      new IntersectionObserver(
+        (entradas) => {
+          for (const entrada of entradas) naCapa = entrada.isIntersecting;
+          pintar();
+        },
+        { threshold: 0 },
+      ).observe(capa);
+    }
+
+    // O markup nasce no estado de repouso; esta primeira pintura é o que
+    // sincroniza o resto (inclusive a capa, se a página abriu rolada).
+    pintar();
+
+    alternar.addEventListener("click", () => {
+      if (estado === "andando") pausar();
+      else andar();
+    });
+
+    botaoParar.addEventListener("click", () => parar());
+
+    botaoVelocidade.addEventListener("click", () => {
+      indice = (indice + 1) % VELOCIDADES.length;
+      etiquetarVelocidade();
+      ultimoRestante = "";
+      if (estado === "andando") contar();
+      anunciar(`Velocidade ${rotuloVelocidade()}.`);
+    });
+
+    // Quem toca no scroll assume o volante. A roda e o toque passam pela
+    // Lenis; teclado e âncora, não — daí os três ouvintes.
+    lenis.on("virtual-scroll", ({ deltaX, deltaY }) => {
+      if (Math.abs(deltaY) > 2 || Math.abs(deltaX) > 2) pausar();
+    });
+
+    document.addEventListener("keydown", (ev) => {
+      // Espaço e setas dentro da própria barra são o botão sendo apertado.
+      if (ev.target instanceof Node && caixa.contains(ev.target)) return;
+      if (TECLAS.has(ev.key)) pausar();
+    });
+
+    document.addEventListener(
+      "click",
+      (ev) => {
+        const clicado = ev.target instanceof Element ? ev.target.closest('a[href^="#"]') : null;
+        if (clicado) pausar("Leitura automática pausada no capítulo escolhido.");
+      },
+      true,
+    );
+  }
+</script>

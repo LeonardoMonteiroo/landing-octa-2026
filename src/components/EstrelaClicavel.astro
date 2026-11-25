@@ -1,0 +1,33 @@
+---
+/**
+ * O selo de "dá para clicar" do book: a estrelinha dourada de brilho do desenho
+ * da Vitória (quatro raios longos e finos, quatro curtos e mais largos, corpo
+ * central pequeno). Onde ela aparecer, o elemento abre ou faz algo.
+ *
+ * Ela só desenha; quem decide a cor é o pai, pela custom property
+ * `--estrela-clicavel-cor` (dourado Ninho em repouso). Sempre `aria-hidden`: o
+ * nome acessível é do botão ou do link que a carrega. `raioCurto` e `vale` foram
+ * medidos no desenho: raio curto ≈ 0,67 do longo, corpo pequeno (`vale` 9).
+ */
+import Estrela from "./Estrela.astro";
+
+interface Props {
+  tamanho?: number;
+  class?: string;
+}
+
+const { tamanho = 28, class: className } = Astro.props;
+---
+
+<span class:list={["estrela-clicavel", className]} aria-hidden="true">
+  <Estrela pontas={8} brilho raioCurto={0.67} vale={9} tamanho={tamanho} cor="currentColor" />
+</span>
+
+<style>
+  .estrela-clicavel {
+    display: inline-grid;
+    place-items: center;
+    flex: none;
+    color: var(--estrela-clicavel-cor, var(--cor-ninho));
+  }
+</style>

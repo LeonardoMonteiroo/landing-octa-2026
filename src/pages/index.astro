@@ -14,6 +14,8 @@ import PainelCores from "../components/PainelCores.astro";
 import PainelTecidos from "../components/PainelTecidos.astro";
 import PainelEstampas from "../components/PainelEstampas.astro";
 import PainelMapa from "../components/PainelMapa.astro";
+import PainelFilme from "../components/PainelFilme.astro";
+import PainelColecao from "../components/PainelColecao.astro";
 import { conto } from "../data/textos";
 ---
 
@@ -70,10 +72,18 @@ import { conto } from "../data/textos";
       </SecaoTematica>
     </Capitulo>
 
-    <Capitulo id="mapa" titulo="Mapa da coleção" fundo="linho">
-      <SecaoTematica titulo="Mapa da coleção">
+    <Capitulo id="mapa" titulo="Mapa do desfile e desenhos técnicos" fundo="linho">
+      <SecaoTematica titulo="Mapa do desfile e desenhos técnicos">
         <PainelMapa slot="visual" />
       </SecaoTematica>
+    </Capitulo>
+
+    <Capitulo id="filme" titulo="Fashion filme" fundo="resistencia">
+      <PainelFilme />
+    </Capitulo>
+
+    <Capitulo id="colecao" titulo="Mapa do desfile" fundo="pertencer">
+      <PainelColecao />
     </Capitulo>
   </main>
 </BaseLayout>

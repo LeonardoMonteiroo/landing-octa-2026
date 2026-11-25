@@ -1,20 +1,18 @@
 ---
 /**
- * Mapa da coleção: os doze croquis em pé no mesmo chão, na ordem do Canva.
+ * Mapa do desfile e desenhos técnicos: os doze croquis em pé no mesmo chão, na ordem do Canva.
  *
- * **Fileira única, e isso é medida.** Na tela de 1280×720 uma fileira de doze
- * deixa cada croqui com ~430px de altura; duas fileiras de seis caberiam com
- * menos de 300px. Mapa é ver tudo de uma vez, então nada aqui pina nem desliza.
+ * **Duas fileiras de seis**, para os croquis não ficarem miúdos. A fileira de cima
+ * é do 1 ao 6 e a de baixo do 7 ao 12, cada uma um `<ol>` com `start` certo.
+ * Os croquis ficam soltos no papel, sem cartão, borda ou costura no chão.
  *
  * **A mesma escala para todos.** `--h` é a altura da página do Canva, e cada
  * croqui ocupa a fração dela que ocupava lá (`altura`, medida). As máscaras têm
- * tamanhos diferentes e continuam tendo. A largura sai da mesma conta, e por
- * isso a soma das larguras é o divisor de `--h`: 2,91 de soma, menos a pequena
- * sobreposição, dá 2,75. Ninguém mede nada em JS.
+ * tamanhos diferentes e continuam tendo; a largura sai da mesma conta. Ninguém
+ * mede nada em JS.
  *
- * **O chão é uma costura**, e os números embaixo são a ordem, que é o conteúdo
- * do mapa. Em leitor de tela quem conta é o `<ol>`, por isso o número visível é
- * `aria-hidden`.
+ * A ordem é o conteúdo do mapa e quem a conta, em leitor de tela, é o `<ol>`; o
+ * número só aparece no visor.
  *
  * O papel é o `--cor-linho-claro`, o mesmo das Cores: sobre o linho o cinza das
  * calças da 6 e da 7 perde a forma.
@@ -23,7 +21,9 @@
  * em tela estreita ela rola na horizontal em vez de encolher até virar palito.
  * Nenhum elemento daqui pode ganhar a utilidade `transition` do Tailwind.
  */
-import { Image } from "astro:assets";
+import { Image, getImage } from "astro:assets";
+import CampoEstrelas from "./CampoEstrelas.astro";
+import EstrelaClicavel from "./EstrelaClicavel.astro";
 import { croquis } from "../data/croquis";
 import { croquisMedidas } from "../data/croquis-medidas";
 
@@ -31,17 +31,36 @@ const arquivos = import.meta.glob<{ default: ImageMetadata }>("../assets/croquis
   eager: true,
 });
 
-const fileira = croquis.map((c, i) => {
+// Os desenhos técnicos (frente e costas, com a ficha de cada peça) vieram prontos
+// da Vitória, um por croqui, e o nome do arquivo é o mesmo do croqui.
+const desenhos = import.meta.glob<{ default: ImageMetadata }>("../assets/desenhos/*.jpeg", {
+  eager: true,
+});
+
+const fileira = await Promise.all(croquis.map(async (c, i) => {
   const imagem = arquivos[`../assets/croquis/${c.nome}.png`];
   const medida = croquisMedidas[c.nome];
   if (!imagem || !medida) throw new Error(`PainelMapa: falta o croqui "${c.nome}"`);
-  return { ...c, ...medida, src: imagem.default, atraso: (i * 0.06).toFixed(2) };
-});
+  const desenho = desenhos[`../assets/desenhos/${c.nome}.jpeg`];
+  if (!desenho) throw new Error(`PainelMapa: falta o desenho técnico "${c.nome}"`);
+  const grande = await getImage({ src: desenho.default, width: 1600, format: "webp", quality: 90 });
+  return { ...c, ...medida, src: imagem.default, grande: grande.src, atraso: (i * 0.06).toFixed(2) };
+}));
+
+// Duas fileiras de seis, para os croquis ficarem grandes. Cada fileira
+// leva o índice global (`inicio`): o visor e a ordem do Canva seguem de 1 a 12.
+const fileiras = [fileira.slice(0, 6), fileira.slice(6)].map((itens, f) => ({
+  itens,
+  inicio: f * 6,
+}));
 ---
 
 <figure class="painel-mapa relative left-1/2 right-1/2 -mx-[50vw] w-screen">
   <div class="papel-mapa textura-linho">
-    <h2>Mapa da coleção</h2>
+    {/* Nome próprio: o `Capitulo` "mapa" já tem um campo atrás deste papel, e os ids do sprite
+        (`estrela-fundo-<nome>-<i>`) não podem se repetir no documento. */}
+    <CampoEstrelas nome="mapa-papel" faixas={3} opacidade={0.85} />
+    <h2 class="titulo-painel">Mapa do desfile e desenhos técnicos</h2>
 
     <div
       class="lineup"
@@ -50,83 +69,300 @@ const fileira = croquis.map((c, i) => {
       aria-label="Os doze croquis da coleção, em ordem"
       data-lineup
     >
-      <ol class="fila">
-        {
-          fileira.map((c, i) => (
-            <li
-              class="croqui"
-              data-croqui
-              style={`--altura:${c.altura}; --aspect:${c.aspect}; --atraso:${c.atraso}s`}
-            >
-              <Image
-                src={c.src}
-                alt={c.alt}
-                widths={[180, 360]}
-                sizes="(min-width: 761px) 11vw, 30vw"
-                format="webp"
-                quality={86}
-              />
-              <span class="numero" aria-hidden="true">
-                {i + 1}
-              </span>
-            </li>
-          ))
-        }
-      </ol>
+      {
+        fileiras.map(({ itens, inicio }) => (
+          <ol class="fila" start={inicio + 1}>
+            {itens.map((c, k) => {
+              const i = inicio + k;
+              return (
+                <li
+                  class="croqui"
+                  data-croqui
+                  style={`--altura:${c.altura}; --aspect:${c.aspect}; --atraso:${c.atraso}s`}
+                >
+                  <button
+                    type="button"
+                    class="croqui-botao"
+                    data-abrir-croqui={i}
+                    data-desenho-tecnico={c.grande}
+                    data-desenho-alt={`Desenho técnico, frente e costas, do look com ${c.alt.charAt(0).toLowerCase()}${c.alt.slice(1)}`}
+                    aria-label={`Abrir o desenho técnico ${i + 1} de ${fileira.length}`}
+                    aria-haspopup="dialog"
+                  >
+                    <EstrelaClicavel class="selo" tamanho={64} />
+                    <Image
+                      src={c.src}
+                      alt=""
+                      widths={[180, 360]}
+                      sizes="(min-width: 761px) 11vw, 30vw"
+                      format="webp"
+                      quality={86}
+                    />
+                  </button>
+                </li>
+              );
+            })}
+          </ol>
+        ))
+      }
     </div>
   </div>
+
+  <dialog class="visor" data-visor data-lenis-prevent aria-label="Desenho técnico ampliado">
+    <div class="visor-folha">
+      <button type="button" class="visor-fechar" data-visor-fechar aria-label="Fechar">×</button>
+      <button type="button" class="visor-seta visor-anterior" data-visor-anterior aria-label="Croqui anterior">‹</button>
+      <div class="visor-palco">
+        <img class="visor-imagem" data-visor-imagem alt="" />
+      </div>
+      <button type="button" class="visor-seta visor-proximo" data-visor-proximo aria-label="Próximo croqui">›</button>
+      <p class="visor-legenda">
+        <strong data-visor-numero></strong>
+      </p>
+    </div>
+  </dialog>
 </figure>
 
 <style>
   .papel-mapa {
+    /* `isolate` dá sentido ao z-index negativo do campo de estrelas: sem ele a camada
+       afundaria atrás do papel. As estrelas são vermelhas, no tom do vermelho dos croquis. */
+    position: relative;
+    isolation: isolate;
     background: var(--cor-linho-claro);
-    padding: clamp(1.5rem, 3vw, 2.25rem) clamp(1rem, 2.5vw, 2rem) clamp(2.5rem, 5vw, 4rem);
+    /* O preenchimento lateral é estreito para os croquis terem largura; o título
+       recupera o que falta até a margem comum dos painéis pelo `--recuo-titulo`. */
+    --papel-lado: clamp(1rem, 2.5vw, 2rem);
+    --recuo-titulo: calc(var(--margem-painel) - var(--papel-lado));
+    padding: var(--titulo-topo) var(--papel-lado) clamp(2.5rem, 5vw, 4rem);
+  }
+
+  .papel-mapa :global(.campo-estrelas) {
+    color: #b3322b;
+  }
+
+  /* As estrelas vermelhas do fundo foram postas de propósito, mas não podem
+     passar por trás de croqui (que é recorte transparente) nem encostar no título.
+     O campo vive em z-index -1 dentro deste papel isolado, então todo conteúdo
+     pinta por cima dele: o título e cada fileira ganham o fundo do papel, e a
+     sombra na mesma cor esfuma as estrelas da beira em vez de cortá-las a faca.
+     Máscara CSS não serve: não alcança o retângulo de cada fileira, que muda com
+     `--h`. */
+  h2,
+  .fila {
+    background-color: var(--cor-linho-claro);
+    box-shadow: 0 0 1.25rem 1.25rem var(--cor-linho-claro);
   }
 
   h2 {
-    font-family: var(--font-display);
-    font-size: clamp(1.75rem, 3.4vw, 2.75rem);
-    font-weight: 500;
-    line-height: 1.04;
     color: var(--cor-resistencia);
-    max-width: 76rem;
-    margin: 0 auto clamp(0.75rem, 1.6vw, 1.25rem);
   }
 
+  /* O primeiro desenho pintado da fileira é a estrelinha do croqui mais alto, que
+     sobe 0,4rem acima do botão (ver `.selo`): a fileira desce o mesmo tanto para a
+     estrela ficar à distância comum do título. `padding`, e não `margin`: a margem
+     colapsaria com a margem de baixo do título e não desceria nada. */
   .lineup {
+    padding-top: 0.4rem;
     container-type: inline-size;
   }
 
-  /* `svh` é o teto: numa tela baixa a fileira encolhe inteira em vez de entrar
-     embaixo da barra do sumário. Os 13rem são a barra, o letreiro e os números. */
+  /* O croqui fica solto no papel, sem cartão, sem borda e sem fundo: a estrelinha
+     no canto diz que dá para abrir, sem precisar passar o mouse. */
+  .croqui-botao {
+    position: relative;
+    display: block;
+    width: 100%;
+    padding: 1.1rem 0 0.9rem;
+    border: 0;
+    background: none;
+    color: inherit;
+    font: inherit;
+    cursor: pointer;
+    transition: transform var(--dur-rapida) var(--curva-fio);
+  }
+
+  .croqui-botao:hover,
+  .croqui-botao:focus-visible {
+    transform: translateY(-6px);
+  }
+
+  .croqui-botao:focus-visible {
+    outline: 3px solid var(--cor-ninho);
+    outline-offset: 3px;
+  }
+
+  .croqui-botao :global(.selo) {
+    position: absolute;
+    top: -0.4rem;
+    right: -0.9rem;
+    z-index: 1;
+  }
+
+  .croqui-botao:hover,
+  .croqui-botao:focus-visible {
+    --estrela-clicavel-cor: var(--cor-resistencia);
+  }
+
+  .visor {
+    width: 100%;
+    max-width: none;
+    height: 100%;
+    max-height: none;
+    margin: 0;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    color: var(--cor-linho-claro);
+  }
+
+  .visor::backdrop {
+    background: rgb(20 6 8 / 0.82);
+  }
+
+  .visor[open] {
+    display: grid;
+    place-items: center;
+    animation: abrir-visor var(--dur-rapida) var(--curva-fio);
+  }
+
+  .visor-folha {
+    position: relative;
+    display: grid;
+    grid-template-columns: 3.5rem minmax(0, 1fr) 3.5rem;
+    grid-template-rows: minmax(0, 1fr) auto;
+    align-items: center;
+    width: min(76rem, 96vw);
+    max-height: 94svh;
+    padding: 1rem;
+    border-radius: 0.8rem;
+    background: var(--cor-linho-claro);
+    color: var(--cor-resistencia);
+    cursor: default;
+  }
+
+  .visor-palco {
+    grid-column: 2;
+    min-height: 0;
+  }
+
+  .visor-imagem {
+    display: block;
+    width: 100%;
+    height: auto;
+    max-height: calc(94svh - 9rem);
+    object-fit: contain;
+    border-radius: 0.3rem;
+  }
+
+  .visor-legenda {
+    grid-column: 1 / -1;
+    margin: 0.5rem auto 0;
+    max-width: 44rem;
+    text-align: center;
+    font-family: var(--font-ficha);
+    font-size: 1rem;
+    line-height: 1.35;
+  }
+
+  .visor-legenda strong {
+    display: block;
+    font-family: var(--font-display);
+    font-weight: 500;
+    font-size: 1.15rem;
+  }
+
+  .visor-fechar,
+  .visor-seta {
+    display: grid;
+    place-items: center;
+    width: 2.75rem;
+    height: 2.75rem;
+    border: 0;
+    border-radius: 999px;
+    background: var(--cor-resistencia);
+    color: var(--cor-linho-claro);
+    font-size: 1.7rem;
+    line-height: 1;
+    cursor: pointer;
+    transition: background-color var(--dur-rapida) var(--curva-fio);
+  }
+
+  .visor-fechar:hover,
+  .visor-seta:hover {
+    background: var(--cor-pertencer);
+  }
+
+  .visor-fechar {
+    position: absolute;
+    top: 0.6rem;
+    right: 0.6rem;
+    z-index: 1;
+  }
+
+  .visor-anterior {
+    grid-column: 1;
+    grid-row: 1;
+  }
+
+  .visor-proximo {
+    grid-column: 3;
+    grid-row: 1;
+  }
+
+  @keyframes abrir-visor {
+    from {
+      opacity: 0;
+      transform: translateY(14px);
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .visor[open] {
+      animation: none;
+    }
+
+    .croqui-botao:hover,
+    .croqui-botao:focus-visible {
+      transform: none;
+    }
+  }
+
+  @media (max-width: 760px) {
+    .visor-folha {
+      grid-template-columns: 2.5rem minmax(0, 1fr) 2.5rem;
+      padding: 0.6rem;
+    }
+
+    .visor-seta {
+      width: 2.25rem;
+      height: 2.25rem;
+    }
+  }
+
+  /* Duas fileiras de seis: o 2,2 deixa o miolo respirar entre os croquis e o teto
+     de 42rem impede que a fileira cresça mais que a tela em monitor largo. */
   .fila {
-    --h: min(calc(100cqw / 2.75), calc(100svh - 13rem));
-    --faixa-numero: 1.9rem;
+    --h: min(calc(100cqw / 2.2), 42rem);
+    --faixa-numero: 0.9rem;
     position: relative;
     display: flex;
     justify-content: center;
     align-items: flex-end;
+    gap: clamp(0.9rem, 2.4cqw, 2rem);
     width: fit-content;
     margin: 0 auto;
     padding: 0;
     list-style: none;
   }
 
-  /* A costura em que todos pisam. Atrás dos pés, à altura do fim dos desenhos. */
-  .fila::after {
-    content: "";
-    position: absolute;
-    inset-inline: 0;
-    bottom: var(--faixa-numero);
-    border-bottom: 1.5px dashed var(--cor-resistencia);
-    opacity: 0.7;
-    z-index: -1;
+  .fila + .fila {
+    margin-top: clamp(1.5rem, 3vw, 2.5rem);
   }
 
   .croqui {
     flex: none;
     width: calc(var(--h) * var(--altura) * var(--aspect));
-    margin-inline: calc(var(--h) * -0.0075);
     text-align: center;
   }
 
@@ -137,16 +373,6 @@ const fileira = croquis.map((c, i) => {
     object-fit: contain;
   }
 
-  .numero {
-    display: block;
-    height: var(--faixa-numero);
-    padding-top: 0.45rem;
-    font-family: var(--font-ficha);
-    font-size: 0.95rem;
-    line-height: 1;
-    font-variant-numeric: lining-nums;
-    color: var(--cor-resistencia);
-  }
 
   /* Abaixo disso a fileira rola: encolher doze croquis numa tela de celular os
      deixaria com um palmo de largura somando todos. */
@@ -164,6 +390,44 @@ const fileira = croquis.map((c, i) => {
 
 <script>
   import { gsap, ScrollTrigger, mm, COM_MOVIMENTO, dur, curva, prioridade } from "../lib/motion";
+
+
+  // O visor funciona com ou sem movimento: é só um <dialog> nativo.
+  const visor = document.querySelector<HTMLDialogElement>("[data-visor]");
+  const botoes = [...document.querySelectorAll<HTMLButtonElement>("[data-abrir-croqui]")];
+  if (visor && botoes.length > 0) {
+    const imagem = visor.querySelector<HTMLImageElement>("[data-visor-imagem]")!;
+    const numero = visor.querySelector<HTMLElement>("[data-visor-numero]")!;
+    let atual = 0;
+
+    const mostrar = (indice: number) => {
+      atual = (indice + botoes.length) % botoes.length;
+      const botao = botoes[atual];
+      imagem.src = botao.dataset.desenhoTecnico ?? "";
+      imagem.alt = botao.dataset.desenhoAlt ?? "";
+      numero.textContent = `Desenho técnico ${atual + 1} de ${botoes.length}`;
+    };
+
+    botoes.forEach((botao, i) =>
+      botao.addEventListener("click", () => {
+        mostrar(i);
+        visor.showModal();
+      }),
+    );
+    visor.querySelector("[data-visor-fechar]")?.addEventListener("click", () => visor.close());
+    visor.querySelector("[data-visor-anterior]")?.addEventListener("click", () => mostrar(atual - 1));
+    visor.querySelector("[data-visor-proximo]")?.addEventListener("click", () => mostrar(atual + 1));
+    // O <dialog> ocupa a tela toda; clicar fora da folha é clicar nele.
+    visor.addEventListener("click", (e) => {
+      if (e.target === visor) visor.close();
+    });
+    visor.addEventListener("keydown", (e) => {
+      if (e.key === "ArrowLeft") mostrar(atual - 1);
+      if (e.key === "ArrowRight") mostrar(atual + 1);
+    });
+    // Devolve o foco ao croqui aberto (o <dialog> já faz, mas o índice mudou com as setas).
+    visor.addEventListener("close", () => botoes[atual].focus());
+  }
 
   mm.add(COM_MOVIMENTO, () => {
     const lineup = document.querySelector<HTMLElement>("[data-lineup]");

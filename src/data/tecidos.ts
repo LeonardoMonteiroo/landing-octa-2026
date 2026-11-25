@@ -143,6 +143,16 @@ export const tecidos: Tecido[] = [
 ];
 
 /**
+ * Quantos pixels do arquivo valem um pixel na tela, na prancha de aviamentos. Cada
+ * peça aparece com `largura do arquivo / DENSIDADE_AVIAMENTOS` px: no tamanho
+ * natural, que é o maior sem borrar. Os recortes de hoje têm de 74 a 280px porque
+ * os originais (`reference/`) não estavam na máquina da revisão para a
+ * apresentação. Com recortes 2× extraídos dos originais, troque para 2, e as peças
+ * ficam do mesmo tamanho e nítidas em tela de densidade dupla.
+ */
+export const DENSIDADE_AVIAMENTOS = 1;
+
+/**
  * Os aviamentos, agrupados pelo que fazem: o que fecha, o que regula e o que
  * arremata. A ordem é essa, e é o que dá leitura à prancha.
  */

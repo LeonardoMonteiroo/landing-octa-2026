@@ -19,4 +19,6 @@ export const capitulos: Capitulo[] = [
   { id: "tecidos", titulo: "Tecidos" },
   { id: "estampas", titulo: "Estampas" },
   { id: "mapa", titulo: "Mapa" },
+  { id: "filme", titulo: "Filme" },
+  { id: "colecao", titulo: "Coleção" },
 ];

@@ -1,0 +1,178 @@
+---
+/**
+ * Mapa do desfile: os três croquis no centro e seis fotos grandes das
+ * modelos em volta de uma estrela grande, a mesma do resto do book. A fotografia é o foco; os croquis são o miolo.
+ *
+ * O palco mede-se pela altura da tela (`--palco`) e tem largura proporcional a
+ * ela, então as porcentagens valem em 1280×720 e em telas grandes. Em tela
+ * estreita vira croquis em cima e fotos em grade. Sem pin, sem revelação, sem JS.
+ */
+import { Image } from "astro:assets";
+import Estrela from "./Estrela.astro";
+import { croquisDoDesfile, fotosDoDesfile } from "../lib/colecaoImagens";
+
+// Posição de cada foto no palco (centro em % da largura e da altura, giro em graus). A estrela ocupa
+// o meio, com a altura do palco; as fotos ficam em volta dela: uma de cada lado, na altura da ponta
+// longa, e duas mais perto, uma acima e outra abaixo dessa ponta. Seis fotos grandes, no lugar de
+// todas: o desenho respira e a fotografia é o foco. Cada lado conta um look: à esquerda o conjunto
+// marrom e o casaco (trio, bastidores), à direita o corselete (passarela e dois bastidores).
+const pendurados = [
+  { nome: "8", x: 7.5, y: 50, giro: -2 },
+  { nome: "11", x: 22.5, y: 24, giro: 2.5 },
+  { nome: "2", x: 22.5, y: 76, giro: -2.5 },
+  { nome: "7", x: 92.5, y: 50, giro: 2 },
+  { nome: "5", x: 77.5, y: 24, giro: -2.5 },
+  { nome: "6", x: 77.5, y: 76, giro: 2.5 },
+];
+const fotos = pendurados.map((pos) => {
+  const foto = fotosDoDesfile.find((f) => f.nome === pos.nome);
+  if (!foto) throw new Error(`PainelColecao: falta a foto "${pos.nome}"`);
+  return { ...foto, x: pos.x, y: pos.y, giro: pos.giro };
+});
+---
+
+<div class="painel-colecao mx-auto w-full px-6 pb-10">
+  <h2 class="titulo-painel">Mapa do desfile</h2>
+
+  <div class="palco">
+    <Estrela pontas={8} brilho raioCurto={0.67} vale={9} cor="rgb(244 239 230 / 0.22)" class="estrela" />
+
+    <ul class="croquis">
+      {
+        croquisDoDesfile.map((c) => (
+          <li>
+            <Image src={c.src} alt={c.alt} widths={[320, 640, 960]} sizes="(min-width: 1024px) 18rem, 30vw" format="webp" quality={90} />
+          </li>
+        ))
+      }
+    </ul>
+
+    <ul class="fotos">
+      {
+        fotos.map((f) => (
+          <li style={`--x:${f.x}%;--y:${f.y}%;--giro:${f.giro}deg`}>
+            <Image src={f.src} alt={f.alt} widths={[400, 800]} sizes="(min-width: 1024px) 24rem, 45vw" format="webp" quality={85} />
+          </li>
+        ))
+      }
+    </ul>
+  </div>
+</div>
+
+<style>
+  .painel-colecao {
+    padding-top: var(--titulo-topo);
+    /* O `px-6` daqui é mais estreito que a margem comum dos painéis; o título
+       recupera a diferença para começar no mesmo x dos outros. */
+    --recuo-titulo: calc(var(--margem-painel) - 1.5rem);
+    /* O palco ocupa uma tela inteira abaixo da barra do sumário (6rem) e do bloco
+       do título: o respiro de cima, a linha do título e o respiro até o conteúdo. */
+    --palco: calc(
+      100svh - 6rem - var(--titulo-topo) - 1.04 * var(--titulo-tamanho) - var(--titulo-ate-conteudo)
+    );
+  }
+
+  ul {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  /* Camada de base: croquis em cima, fotos em grade. A estrela só existe no palco grande. */
+  .palco {
+    display: grid;
+    gap: 1.5rem;
+  }
+
+  .palco :global(.estrela) {
+    display: none;
+  }
+
+  .croquis {
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+    gap: 0.5rem;
+  }
+
+  .croquis :global(img) {
+    display: block;
+    width: auto;
+    max-width: 100%;
+    height: clamp(16rem, 55svh, 28rem);
+    filter: drop-shadow(0 12px 18px rgb(0 0 0 / 0.45));
+  }
+
+  .fotos {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.75rem;
+  }
+
+  .fotos li {
+    overflow: hidden;
+    border-radius: 0.3rem;
+    box-shadow: 0 10px 26px rgb(0 0 0 / 0.5);
+  }
+
+  .fotos :global(img) {
+    display: block;
+    width: 100%;
+    height: auto;
+    aspect-ratio: 2 / 3;
+    object-fit: cover;
+  }
+
+  @media (min-width: 1024px) {
+    /* As fotos de cima nascem um pouco abaixo do topo do palco (centro a 24%,
+       menos meia foto, mais o giro): medido, 1,65% do palco nas três telas. O palco
+       sobe isso para a primeira foto ficar à distância comum do título. Mexeu nos
+       `pendurados` de cima, mede de novo. */
+    .palco {
+      position: relative;
+      display: block;
+      height: var(--palco);
+      width: min(100%, calc(var(--palco) * 2.2));
+      margin-inline: auto;
+      margin-top: calc(var(--palco) * -0.0165);
+    }
+
+    /* A estrela do book, grande, atrás dos croquis. O tamanho vem do palco, não do atributo do SVG. */
+    .palco :global(.estrela) {
+      display: block;
+      position: absolute;
+      left: 50%;
+      top: 50%;
+      width: calc(var(--palco) * 1.08);
+      height: calc(var(--palco) * 1.08);
+      translate: -50% -50%;
+      filter: drop-shadow(0 0 1.5rem rgb(244 239 230 / 0.3));
+    }
+
+    .croquis {
+      position: absolute;
+      left: 50%;
+      top: 50%;
+      translate: -50% -50%;
+      gap: calc(var(--palco) * 0.01);
+    }
+
+    .croquis :global(img) {
+      height: calc(var(--palco) * 0.62);
+      max-width: none;
+    }
+
+    .fotos {
+      display: block;
+    }
+
+    .fotos li {
+      position: absolute;
+      left: var(--x);
+      top: var(--y);
+      width: calc(var(--palco) * 0.29);
+      translate: -50% -50%;
+      rotate: var(--giro);
+    }
+  }
+</style>

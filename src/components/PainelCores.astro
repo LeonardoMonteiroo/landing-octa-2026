@@ -20,11 +20,16 @@ import Harmonias from "./Harmonias.astro";
 
 <figure class="painel-cores relative left-1/2 right-1/2 -mx-[50vw] w-screen">
   <div class="papel-cores textura-linho">
-    <div class="mx-auto max-w-6xl px-5 sm:px-8">
-      <CartelaCores />
-      <div class="mt-20 sm:mt-28">
-        <Harmonias />
+    {/* A cartela mora na coluna do título e começa na mesma linha que ele; as
+        harmonias, que são um arranjo centrado, ficam na medida delas. */}
+    <div class="coluna-cores">
+      <h2 class="titulo-painel">Cores e harmonias</h2>
+      <div class="cartela-na-coluna">
+        <CartelaCores />
       </div>
+    </div>
+    <div class="mx-auto mt-20 max-w-6xl px-5 sm:mt-28 sm:px-8">
+      <Harmonias />
     </div>
   </div>
 
@@ -39,6 +44,15 @@ import Harmonias from "./Harmonias.astro";
   .papel-cores {
     background: var(--cor-linho-claro);
     color: var(--cor-resistencia);
-    padding-block: clamp(3.5rem, 9vw, 7rem);
+    padding-block: var(--titulo-topo) clamp(3.5rem, 9vw, 7rem);
+  }
+
+  .coluna-cores {
+    padding-inline: var(--margem-painel);
+  }
+
+  .cartela-na-coluna {
+    width: min(100%, var(--coluna-painel));
+    margin-inline: auto;
   }
 </style>

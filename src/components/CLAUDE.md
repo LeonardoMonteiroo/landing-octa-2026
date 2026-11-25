@@ -64,20 +64,111 @@ confere é `piloto.mjs leitura`.
   varredura. Nada da composição depende de medida: a revelação é por
   `IntersectionObserver`, porque esta seção vem depois de duas que pinam.
 
-## PainelMapa (o mapa da coleção)
+## PainelMapa (mapa do desfile e desenhos técnicos)
 
 - A ordem é o conteúdo: a lista de `src/data/croquis.ts` segue as páginas do
-  Canva, e o número embaixo de cada croqui é essa ordem. Reordenar por cor ou
+  Canva, e o número que aparece no visor é essa ordem. Reordenar por cor ou
   por máscara é desfazer a seção.
-- **Fileira única, na mesma escala.** `--h` é a altura da página do Canva, e
-  altura e largura de cada croqui saem dela, sem medição em JS. O 2,75 que
-  divide a largura é a soma das larguras (2,91) menos a sobreposição: croqui
-  novo muda esse número.
+- **Duas fileiras de seis, na mesma escala.** Os croquis ficam soltos no papel:
+  sem cartão, borda, fundo branco nem costura no chão. `--h` é a altura da página
+  do Canva (teto de 42rem), e altura e largura de cada croqui saem dela, sem
+  medição em JS; o `gap` entre eles os mantém separados — margem negativa aqui
+  é voltar o bug. A estrelinha de clicável tem 64px.
+- **As estrelas vermelhas do fundo não passam por trás dos croquis nem do título.** O
+  campo (`CampoEstrelas nome="mapa-papel"`) fica em `z-index: -1` dentro do papel
+  isolado. Cada `.fila` e o `h2` têm fundo da cor do papel e uma sombra da mesma cor
+  (`0 0 1.25rem 1.25rem`), que esfuma as estrelas da beira em vez de cortá-las. Em 1280,
+  onde a fileira ocupa quase a largura toda, sobram estrelas nas laterais. Fundo, e não
+  máscara: a máscara não alcança o retângulo de cada fileira, que muda com `--h`. Ao
+  conferir, olhe a foto em tamanho real: reduzida, ela inventa estrela atrás de croqui.
+- **O selo de clicável é a `EstrelaClicavel`**, e a instrução de uso mora uma
+  vez só, na `DicaEstrela`, no pé da capa (primeira tela, sem rolar). Todo elemento clicável novo
+  leva a estrelinha (dourada Ninho em repouso; o pai muda `--estrela-clicavel-cor`
+  no hover e no foco) em vez de inventar outro selo. O desenho é o da Vitória:
+  `raioCurto` 0,67 e `vale` 9 na `Estrela` de brilho; mexer nesses números muda
+  a estrela do site inteiro.
+- Clicar no croqui abre, num `<dialog>`, o desenho técnico dele (frente e costas, com a
+  ficha da peça) de `src/assets/desenhos/<nome>.jpeg`, o mesmo nome do croqui. Croqui
+  novo precisa do desenho, ou o build falha. Os JPEG vieram prontos, não há extrator. Os atributos do botão levam
+  `desenho` no nome (`data-desenho-tecnico`): `data-grande` já é da `PainelTecidos`, que
+  apaga tudo o que casa com ele — o botão ficou em `opacity: 0` por isso.
 - A tonalidade é resolvida no extrator, só na foto: as máscaras vetoriais não
   passam pela correção. Não corrigir com `filter` no CSS, e não usar a mediana de
   L como alvo, porque ela é a roupa (ver o cabeçalho de `extract-croquis.mjs`).
 - A revelação é por `IntersectionObserver` com varredura, como na cartela de
   estampas; o ScrollTrigger não anima nada, é só a segunda rede.
+
+## Títulos de painel
+
+- Todo título visível de painel (Cores e harmonias, Tecidos e aviamentos, Design de
+  superfície, Mapa do desfile e desenhos técnicos, Mapa do desfile) usa a classe global
+  `.titulo-painel` de `tokens.css`: mesmo tamanho, peso, margem e posição (à esquerda
+  da coluna central de 76rem). A cor fica com cada painel. Painel novo com título usa
+  a classe, não um `h2` próprio. O título fica fora da cartela de papel, na parede.
+- O espaço é todo de tokens de `tokens.css`, e nenhum painel tem número próprio em volta
+  do título:
+  - `--titulo-tamanho`: 44px em 1280, 56px em 2560;
+  - `--titulo-topo`: o `padding-top` de quem contém o título;
+  - `--titulo-ate-conteudo`: o `margin-bottom` do título;
+  - `--coluna-painel` (76rem);
+  - `--margem-painel`: a margem lateral em tela estreita.
+- **A distância do título ao conteúdo é medida até o primeiro desenho pintado**, não até
+  a caixa do irmão: a estrelinha do croqui mais alto no Mapa (a fileira desce 0,4rem com
+  `padding`, porque `margin` colaria na margem do título), a foto mais alta no Mapa do
+  desfile (o palco sobe 1,65% de si). Mexeu no que fica em cima de um painel, mede de novo.
+- Contêiner com preenchimento lateral menor que `--margem-painel` (o papel do Mapa, o
+  `px-6` do Mapa do desfile) declara `--recuo-titulo` com a diferença. É o que faz o título
+  começar no mesmo x em todo painel quando a tela é mais estreita que a coluna.
+- **Blocos retangulares ocupam a coluna e começam na mesma linha do título:** a cartela de
+  cores, a cartela de estampas, a materioteca e a prancha de aviamentos. **Composições
+  livres ficam centradas nela:** a fileira de croquis e o palco do Mapa do desfile.
+- Segundo nível: `.subtitulo-painel` (0,62 do título), para o nome do tecido e para
+  "Aviamentos". Nada abaixo do título de painel pode ser maior que ele.
+- O palco do Mapa do desfile desconta o bloco do título inteiro de `100svh` (ver
+  `--palco`). Mexeu nos tokens, ele acompanha sozinho.
+
+## PainelColecao
+
+- "Mapa do desfile": os croquis 12, 10 e 3 (os três looks, de `src/assets/croquis/`)
+  no centro, sobre a `Estrela` do book (`brilho`, 8 pontas, a mesma do
+  `EstrelaClicavel`), e seis fotos grandes em volta, escolhidas à mão na lista
+  `pendurados` do componente (fotos de `src/assets/colecao/`, resolvidas por
+  `src/lib/colecaoImagens.ts`): à esquerda o trio, o conjunto marrom e o casaco, à
+  direita o corselete; as fotos não têm borda. A fotografia é o foco, por isso não entram as onze; as outras
+  continuam em `src/data/colecao.ts` para quando precisar. O palco mede-se pela
+  **altura da tela** (`--palco`) e a largura é 2,2× ela: as posições são
+  porcentagens do palco, e o desenho é o mesmo em 1280×720 e em telas grandes.
+  Confira sempre em 1920×1080 e 2560×1440, não só em 1280×720. A estrela é um
+  componente filho: o CSS escopado não a alcança, por isso `:global(.estrela)`.
+  Sem pin, sem revelação, sem JS; em tela estreita os croquis vão para cima e
+  as fotos para baixo, em grade.
+
+## PainelFilme
+
+- O player é uma peça do book: capa = primeiro quadro do filme
+  (`src/assets/filme/capa.jpg`), moldura de papel com costura tracejada, a
+  `EstrelaClicavel` no lugar do play e o letreiro "Triádico" por cima.
+- **Pré-carga.** O YouTube carrega quando a seção está a uma tela de distância (um
+  `IntersectionObserver` com `rootMargin: 100%`), pela IFrame API com
+  `controls: 0` e **sem** `autoplay`. O player fica parado atrás da capa, e o clique
+  só dá o `playVideo()`: ~1 s até tocar, contra ~4 s quando tudo era montado no
+  clique. Antes do clique, os eventos do player não mexem na capa (o `pedido`).
+  Clicar antes de o player ficar pronto toca assim que ele estiver.
+- A barra (play, costura de progresso, mudo, tela cheia) é nossa, e o iframe fica com
+  `pointer-events: none`, então o YouTube não recebe o mouse. Na pausa e no fim um véu
+  desfocado cobre o que ele desenha por baixo.
+- **O que o YouTube mostra e não se tira:** o título e o logo nos primeiros segundos,
+  e o botão de pausa no centro nos primeiros ~3 s de toda reprodução. Esse botão é do
+  player novo dele, aparece mesmo com `controls: 0`, em youtube.com e em
+  youtube-nocookie.com, e mora dentro do iframe. Também não some aquecendo o player em
+  silêncio antes do clique, porque volta a cada play (foi medido). A cura seria um
+  vídeo do próprio site no lugar do YouTube; ficou com o YouTube por decisão.
+- O estado vive em `data-estado` (parado, carregando, tocando, pausado, fim) e o CSS
+  lê só ele. Trocar de vídeo é trocar `idVideo`, a capa e a `duracao`.
+- Sem ScrollTrigger, sem revelação: não há nada para esconder nem para remedir.
+  A seção tem a altura de uma tela abaixo da barra do sumário (`min-height:
+  calc(100svh - 6rem)`) e a moldura 16:9 cresce com ela: a largura sai da altura
+  em `svh`, não de um teto de largura.
 
 ## Capitulo
 
@@ -153,12 +244,33 @@ para a direita, cortando as fotos daquela margem. No bloco escopado do palco vai
 que o utilitário do Tailwind e apagaria o `-mx-[50vw]`, deixando só o
 `left: 50%` — a seção inteira meia tela à direita.
 
+As fotos de cada verso vão para a esquerda ou para a direita **pela altura**, não por
+índice par e ímpar. A ordem da parede alterna deitada e em pé, e a divisão por índice
+mandava todas as deitadas para um lado: era a coluna curta com uma tela de parede vazia
+embaixo.
+- `dividirMargens` (`src/lib/margens.ts`, testado em `tests/margens.test.mjs`) testa
+  todas as divisões do verso e fica com a de colunas mais parecidas.
+- A altura é estimada com a mesma conta do CSS de `.anotacao`, numa tela de referência,
+  `TELA_REFERENCIA_MOOD` (2560×1440, a da apresentação).
+- Mexeu na largura da `.marginalia`, na coluna do verso, no vão entre fotos ou no
+  `padding-top` da margem direita: atualize `TELA_REFERENCIA_MOOD`.
+- A largura e a velocidade de cada foto saem do índice dela na parede, para a divisão não
+  mudar o tamanho de foto nenhuma.
+- Medido: diferença entre colunas de 37, 42 e 79px em 2560, e de 13, 372 e 238px em 1280,
+  sempre menor que uma foto média do verso.
+
 **`CaixaFotos`:** a camada de baixo é o conto em cima e as fotos numa grade; a de
 cima é a classe `.caixa-armada`. O pin é no `.palco`. A `casa()` devolve o
 **centro** da foto, e por isso a área de pouso é 0,86 × 0,8 da mesa: sem essa
 folga a fileira de cima nasce com meia foto para fora e o `overflow: hidden` do
 palco a corta. O conto acende por palavra (`SplitText`, `type: "words"`) e nunca
 abaixo de 0,2.
+
+O conto começa na mesma linha dos títulos de painel. Duas coisas fazem isso: o
+`padding-left` do palco (o maior entre a margem de antes e `(100% − 76rem) / 2`) e a
+coluna do conto, `min(38%, 32rem)`, que tem largura de leitura. Nunca `max-width` nem
+margem automática no `.palco`, que é pinado. Em 1280 os valores são os de antes; em 2560
+a mesa encolhe uns 15%, e as casas, medidas da mesa pelo JS, acompanham.
 
 ## FolhaConto
 
@@ -176,6 +288,53 @@ página que esconde irmãos por projeto (nove de dez em `opacity: 0`), e por iss
 o esconder e o revelar vivem os dois no mesmo `mm.add`. Quem escolhe qual está
 acesa é o `IntersectionObserver` — ver a armadilha da ordem de remedida, na
 raiz, e a dos dois tweens de opacidade na mesma peça.
+
+- **Tamanho:** a amostra tem 45svh (com teto de 55% da coluna) e a ficha encosta nela,
+  4rem depois, na coluna dos títulos. Cada ficha tem 50svh, e a lista inteira dá 5 telas
+  (eram ~8,5 com uma tela por ficha). As fichas se encostam: uma só cruza a linha de
+  leitura de cada vez.
+- **Onde a amostra gruda:** o palco gruda na altura em que ele mora quando a seção chega
+  pela âncora (`6rem` + o bloco do título). Um `top` em svh empurraria a amostra para
+  baixo logo na entrada, porque o sticky também puxa para baixo o que está acima da linha
+  dele. A linha de leitura é o centro da amostra grudada, calculado no `mm.add`.
+- **Ficha marcada:** com meia tela por ficha, duas aparecem juntas. A da amostra acesa
+  leva `data-entrada-acesa`, e as outras recuam a 0,45. O atributo só existe dentro do
+  `mm.add` e sai no cleanup.
+- **Quem decide é `fichaMaisPerto`** (`src/lib/materioteca.ts`, testada em
+  `tests/materioteca.test.mjs`), medida na hora; o aviso do IO é só o gatilho. Depois de
+  um salto a linha pode cair fora de todas as fichas, e nenhuma avisava: a amostra ficava
+  presa na anterior (a sarja ao lado da ficha do denim). Um segundo IO, sobre a
+  materioteca inteira e com a tela como raiz, pega o salto que vem de fora da seção e cai
+  abaixo da lista. O `scrollend` pega o salto que leva a linha de cima de todas as fichas
+  para baixo de todas, com a materioteca na tela antes e depois. Nenhum dos dois IOs vê
+  esse caso (barra arrastada depressa, `End`), e ficava a Alicia ao lado da ficha do
+  denim. O `scrollend` sai no cleanup.
+- **O palco volta com `display: block`** dentro da `.armada`, porque a camada de baixo o
+  esconde. Sem isso a amostra some, e a conferência por opacidade não percebe (elemento em
+  `display: none` continua com opacidade 1). Confira pelo tamanho da caixa também.
+
+## PranchaAviamentos
+
+- As 14 peças soltas sobre a parede, como nas páginas 25 e 26 do book, com a estrelinha.
+  Clicar mostra o nome numa etiqueta inclinada. O "Botão imantado" da página 26 ficou de
+  fora por decisão; a prancha segue `aviamentos` de `tecidos.ts`.
+- **`<details>` nativo, sem `<script>`.** O nome fechado é escondido pelo navegador, não
+  por CSS do projeto, e o `alt` da imagem já nomeia a peça para o leitor de tela. Enter e
+  Espaço abrem e fecham. Várias peças podem ficar abertas ao mesmo tempo.
+- **Tamanho:** cada peça tem a largura do arquivo dividida por `DENSIDADE_AVIAMENTOS`
+  (`tecidos.ts`), quando a prancha tem a largura da coluna (1216px), e encolhe junto com
+  ela abaixo disso (`100cqw`). Assim as posições em % valem em qualquer tela; nunca cresce
+  além do natural. Os recortes têm de 74 a 280px. Em tela 2× ficam um pouco moles. Com
+  recortes 2× dos originais (`reference/`), troque a constante para 2.
+- **Posições escritas à mão** (`posicoes`), numa prancha 8:5, em três fileiras: o que
+  fecha à esquerda, o que regula no meio, o que arremata à direita. A etiqueta sai para o
+  lado do vão. Mexeu numa posição: abra todas as peças e confira em 1280, 1920 e 2560 que
+  nenhuma etiqueta ou peça cobre outra.
+- **Atributos `data-aviamento…`,** nunca `data-grande`: a materioteca apaga tudo o que
+  casa com ele. E a classe é `.peca-aviamento`, nunca `.peca`, que é das peças do
+  painel-conceito e que o `rolagem` do piloto audita (com `.peca` aqui ele contava 84
+  alvos em vez de 70).
+- Abaixo de 900px a prancha vira grade, com o mesmo `<details>`.
 
 ## CampoEstrelas (as estrelinhas nas paredes de cor chapada dos capítulos)
 

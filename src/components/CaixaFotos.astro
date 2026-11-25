@@ -137,14 +137,20 @@ const [inicial = "", ...resto] = [...abertura];
   /* Só entra pela classe que o mm.add põe. Nada aqui esconde conteúdo: o que
      muda é o posicionamento; a opacidade das fotos nunca é tocada, e a do conto
      só cai até 0,2 no tween — e só com movimento. */
+  /* O conto começa na mesma linha dos títulos de painel (a beira da coluna de
+     76rem) e tem largura de leitura; a mesa fica com o resto. Tudo por
+     preenchimento e pela grade, nunca por `max-width` ou margem automática: o
+     palco é pinado, e o `.pin-spacer` do ScrollTrigger re-resolveria isso errado.
+     Em 1280 os dois `max`/`min` dão os valores de antes (4rem e 38%). */
   .palco.caixa-armada {
     display: grid;
-    grid-template-columns: 38% 1fr;
+    grid-template-columns: min(38%, 32rem) 1fr;
     align-items: center;
     gap: clamp(1.5rem, 4vw, 3.5rem);
     width: 100%;
     min-height: 100svh;
     padding: 0 clamp(1.5rem, 5vw, 4rem);
+    padding-left: max(clamp(1.5rem, 5vw, 4rem), calc((100% - var(--coluna-painel)) / 2));
     overflow: hidden;
   }
 

@@ -77,8 +77,9 @@ const fotos = [
 ---
 
 <figure class="mostruario relative left-1/2 right-1/2 -mx-[50vw] w-screen">
+  <h2 class="titulo-painel">Design de superfície</h2>
+
   <div class="cartela" data-mostruario>
-    <h2>Design de superfície</h2>
 
     {/* Os três panos: um rapport inteiro cada um, picotado como amostra. */}
     <div class="fileira panos">
@@ -129,29 +130,21 @@ const fotos = [
 
 <style>
   .mostruario {
-    padding: clamp(2.5rem, 6vw, 5rem) clamp(1.25rem, 5vw, 4rem) clamp(3.5rem, 8vw, 6.5rem);
+    padding: var(--titulo-topo) var(--margem-painel) clamp(3.5rem, 8vw, 6.5rem);
   }
 
   /* A cartela é de papel: sobre o vinho o grafite do xadrez desaparece, sobre
      o linho claro ele volta a ter forma. A sombra é a de coisa encostada na
-     parede, a mesma do `.papel` — não a sombra difusa de card flutuando. */
+     parede, a mesma do `.papel` — não a sombra difusa de card flutuando. Ela
+     ocupa a coluna do título e começa na mesma linha que ele; as amostras
+     continuam com 242px (o rapport), e o que a coluna dá a mais é papel. */
   .cartela {
-    max-width: 68rem;
+    max-width: var(--coluna-painel);
     margin-inline: auto;
     padding: clamp(1.75rem, 3.4vw, 3rem) clamp(1.5rem, 3.4vw, 3.25rem) clamp(2.25rem, 4vw, 3.5rem);
     background: var(--cor-linho-claro);
     box-shadow: 0 0.35rem 0.75rem -0.3rem rgb(0 0 0 / 0.42);
     translate: 0 calc(var(--p, 0) * 10px);
-  }
-
-  /* O letreiro mora na cartela, não na parede: é a etiqueta do mostruário. */
-  h2 {
-    font-family: var(--font-display);
-    font-size: clamp(1.75rem, 3.4vw, 2.75rem);
-    font-weight: 500;
-    line-height: 1.04;
-    color: var(--cor-resistencia);
-    margin: 0 0 clamp(1.75rem, 3.6vw, 2.75rem);
   }
 
   .fileira {

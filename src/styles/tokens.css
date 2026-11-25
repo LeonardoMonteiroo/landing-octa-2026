@@ -40,6 +40,20 @@
   /* Deslocamento padrão de uma revelação. */
   --desloc-revelacao: 1.25rem;
 
+  /* Títulos de painel (ver .titulo-painel). O tamanho cresce com a tela: 44px em
+     1280, 50px em 1920 e 56px em 2560, a tela da apresentação. */
+  --titulo-tamanho: clamp(1.75rem, 2rem + 0.9375vw, 3.5rem);
+  /* Do topo da seção ao topo da caixa do título. */
+  --titulo-topo: clamp(2.5rem, 4vw, 4.5rem);
+  /* Do pé do título ao primeiro conteúdo **pintado** do painel (o novelo, o papel da
+     cartela, a amostra, a estrelinha do croqui mais alto), e não à caixa do irmão: é a
+     distância que o olho lê. Quem tem folga em cima do desenho compensa no próprio bloco. */
+  --titulo-ate-conteudo: clamp(1.5rem, 2.2vw, 2.75rem);
+  /* A coluna central: o título e os blocos retangulares dos painéis moram nela. */
+  --coluna-painel: 76rem;
+  /* A margem lateral dos painéis quando a tela é mais estreita que a coluna. */
+  --margem-painel: clamp(1.25rem, 5vw, 4rem);
+
   color-scheme: light;
 }
 
@@ -109,6 +123,15 @@ html.pre-anima [data-capa-estrela] {
   opacity: 0;
 }
 
+/* Nunca há rolagem lateral. Os painéis que sangram de ponta a ponta usam `w-screen`
+   (100vw), que conta a barra de rolagem vertical e passa uns pixels da área útil. `clip`,
+   e não `hidden`: não cria contêiner de rolagem, então `position: sticky` e os pins do
+   ScrollTrigger seguem funcionando. */
+html,
+body {
+  overflow-x: clip;
+}
+
 body {
   margin: 0;
   background: var(--cor-linho);
@@ -133,6 +156,33 @@ body {
   background-image:
     repeating-linear-gradient(0deg, rgb(0 0 0 / 0.025) 0px, transparent 1px, transparent 2px),
     repeating-linear-gradient(90deg, rgb(0 0 0 / 0.025) 0px, transparent 1px, transparent 2px);
+}
+
+/* Título de painel: o mesmo em todo capítulo que tem título visível (Tecidos, Design de superfície,
+   Mapa, Mapa do desfile). Alinhado à esquerda da coluna central de 76rem, sempre no mesmo lugar. A cor
+   fica com cada painel, porque depende do papel em que o título está. */
+/* O `--recuo-titulo` é o quanto falta à margem do contêiner de cada painel para chegar a
+   `--margem-painel`: assim, em tela estreita, o título começa no mesmo x em todo painel,
+   seja qual for o preenchimento do papel em volta dele. O espaço de cima é do painel
+   (`padding-top: var(--titulo-topo)`), e o de baixo é este `margin-bottom`. */
+.titulo-painel {
+  width: min(100% - 2 * var(--recuo-titulo, 0px), var(--coluna-painel));
+  margin: 0 auto var(--titulo-ate-conteudo);
+  font-family: var(--font-display);
+  font-size: var(--titulo-tamanho);
+  font-weight: 500;
+  line-height: 1.04;
+  text-align: left;
+}
+
+/* Segundo nível, abaixo do título de painel: o nome de cada tecido na ficha e o
+   "Aviamentos". Nunca maior que o título do painel. */
+.subtitulo-painel {
+  font-family: var(--font-display);
+  font-size: calc(var(--titulo-tamanho) * 0.62);
+  font-weight: 500;
+  line-height: 1.1;
+  margin: 0;
 }
 
 .sr-only {

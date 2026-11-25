@@ -24,18 +24,16 @@
  *   classe sai no cleanup.
  */
 import { Image } from "astro:assets";
-import { tecidos, aviamentos } from "../data/tecidos";
-import { amostra, aviamento } from "../lib/materiais";
+import PranchaAviamentos from "./PranchaAviamentos.astro";
+import { tecidos } from "../data/tecidos";
+import { amostra } from "../lib/materiais";
 
 const catalogo = tecidos;
 ---
 
 <figure class="painel-tecidos relative left-1/2 right-1/2 -mx-[50vw] w-screen">
   <header>
-    <h2>Tecidos e aviamentos</h2>
-    <p>
-      Dez amostras, uma de cada vez, do tamanho em que dá para ver a trama.
-    </p>
+    <h2 class="titulo-painel">Tecidos e aviamentos</h2>
   </header>
 
   <div class="materioteca" data-materioteca>
@@ -75,7 +73,7 @@ const catalogo = tecidos;
               />
             </div>
             <div class="texto">
-              <h3>{t.titulo}</h3>
+              <h3 class="subtitulo-painel">{t.titulo}</h3>
               <dl>
                 <dt class="sr-only">Composição</dt>
                 <dd>{t.composicao}</dd>
@@ -91,58 +89,20 @@ const catalogo = tecidos;
     </ol>
   </div>
 
-  <section class="indice" data-indice aria-label="Aviamentos">
-    <h3>Aviamentos</h3>
-    <ul>
-      {
-        aviamentos.map((a) => (
-          <li>
-            <Image
-              src={aviamento(a.nome)}
-              alt={a.alt}
-              widths={[120, 240]}
-              sizes="3.5rem"
-              format="webp"
-              quality={90}
-            />
-            <span>{a.titulo}</span>
-          </li>
-        ))
-      }
-    </ul>
-  </section>
+  <PranchaAviamentos />
 
   <figcaption class="sr-only">
     Materioteca da coleção: as dez amostras de tecido em tamanho grande, uma de cada vez, com
-    composição, gramatura e fornecedor, seguidas do índice dos catorze aviamentos.
+    composição, gramatura e fornecedor, seguidas da prancha dos catorze aviamentos, em que cada
+    peça mostra o próprio nome ao ser aberta.
   </figcaption>
 </figure>
 
 <style>
+  /* Em cima, o respiro comum dos títulos de painel; dos lados, a margem comum. O
+     espaço entre o título e a primeira amostra é o do próprio `.titulo-painel`. */
   .painel-tecidos {
-    padding: clamp(2rem, 4vw, 3.5rem) clamp(1.25rem, 5vw, 4rem);
-  }
-
-  /* Cabeçalho curto de propósito: numa tela de 720 cada rem aqui empurra a
-     primeira amostra para baixo da dobra. */
-  header {
-    max-width: 40rem;
-    margin-bottom: clamp(1.25rem, 2.5vw, 2rem);
-  }
-
-  h2 {
-    font-family: var(--font-display);
-    font-size: clamp(2rem, 4.2vw, 3.4rem);
-    font-weight: 500;
-    line-height: 1.02;
-    margin: 0 0 0.9rem;
-  }
-
-  header p {
-    margin: 0;
-    font-size: 1.1rem;
-    line-height: 1.6;
-    opacity: 0.8;
+    padding: var(--titulo-topo) var(--margem-painel) clamp(2rem, 4vw, 3.5rem);
   }
 
   /* ── camada 1: lista comum ─────────────────────────────────────────────── */
@@ -178,14 +138,10 @@ const catalogo = tecidos;
     display: block;
   }
 
-  /* A ficha é o que se lê enquanto a amostra é olhada, e as duas têm de pesar
-     o mesmo: nome grande o bastante para ser o par da peça ao lado, e a
+  /* A ficha é o que se lê enquanto a amostra é olhada: o nome no segundo nível de
+     título (`.subtitulo-painel`, nunca maior que o título do painel), e a
      composição em corpo de leitura, não de legenda. */
-  h3 {
-    font-family: var(--font-display);
-    font-size: clamp(1.9rem, 4vw, 3.4rem);
-    font-weight: 500;
-    line-height: 1.02;
+  .texto h3 {
     margin: 0 0 0.7rem;
     padding-bottom: 0.55rem;
     border-bottom: 3px solid var(--tom);
@@ -209,26 +165,36 @@ const catalogo = tecidos;
 
   /* ── camada 2: palco fixo, posta e retirada pelo matchMedia ────────────── */
 
+  /* A amostra tem ~45% da altura da tela e a ficha encosta nela, na coluna dos
+     títulos (antes: ~870px de amostra em 2560 e ~450px de vazio até a ficha). */
   .materioteca.armada {
     display: grid;
-    grid-template-columns: minmax(0, 0.95fr) minmax(0, 1.05fr);
-    gap: clamp(2rem, 5vw, 5rem);
+    width: min(100%, var(--coluna-painel));
+    margin-inline: auto;
+    grid-template-columns: min(45svh, 55%) minmax(0, 1fr);
+    gap: 4rem;
     align-items: start;
   }
 
+  /* O palco gruda exatamente onde ele mora quando a seção chega pela âncora do
+     sumário (6rem da barra mais o bloco do título): assim, na entrada, a amostra
+     fica à distância comum do título, e daí em diante fica parada nessa altura
+     enquanto as fichas passam. Um `top` fixo em svh empurraria a amostra para
+     baixo logo na entrada, porque o sticky também puxa para baixo o que mora
+     acima da linha dele. */
   .armada .palco {
+    /* A camada de baixo esconde o palco (`display: none`); é aqui que ele volta. */
+    display: block;
     position: sticky;
-    top: 0;
-    height: 100svh;
-    display: grid;
-    place-items: center;
+    top: calc(
+      6rem + var(--titulo-topo) + 1.04 * var(--titulo-tamanho) + var(--titulo-ate-conteudo)
+    );
   }
 
   .armada .moldura {
     position: relative;
     width: 100%;
     aspect-ratio: 1;
-    max-height: 68svh;
   }
 
   .armada .grande {
@@ -253,72 +219,41 @@ const catalogo = tecidos;
     gap: 0;
   }
 
-  /* Cada entrada ocupa uma tela: é o que dá a uma amostra o tempo de ser
-     olhada antes da próxima entrar. */
+  /* Cada entrada ocupa meia tela: o tempo de a amostra ser olhada antes da
+     próxima entrar, com a seção em ~5 telas (eram ~8,5 com uma tela por
+     entrada). As entradas se encostam: exatamente uma cruza a linha de leitura
+     de cada vez. */
   .armada .entrada {
     display: flex;
     flex-direction: column;
     justify-content: center;
-    min-height: 82svh;
-    padding-block: 2rem;
+    /* A camada de baixo centra a ficha (`align-items: center`, pensado para a
+       grade); aqui ela encosta à esquerda, junto da amostra, e todas as fichas
+       começam no mesmo x. */
+    align-items: flex-start;
+    min-height: 50svh;
+    padding-block: 1.5rem;
   }
 
   .armada .entrada .texto {
     max-width: 32rem;
+    transition: opacity var(--dur-rapida) var(--curva-agulha);
   }
 
-  /* ── índice de aviamentos ──────────────────────────────────────────────── */
-
-  .indice {
-    margin-top: clamp(3rem, 6vw, 5rem);
-    padding-top: clamp(2rem, 4vw, 3rem);
-    border-top: 1px dashed color-mix(in srgb, currentColor 45%, transparent);
+  /* Com meia tela por entrada, duas fichas aparecem juntas: a da amostra acesa
+     fica inteira e as outras recuam. Quem põe o atributo é o script, dentro do
+     mm.add; sem ele (sem JS, movimento reduzido, tela estreita) todas ficam
+     iguais. Não é alvo de GSAP, então a transição de CSS aqui é segura. */
+  .armada .entrada:not([data-entrada-acesa]) .texto {
+    opacity: 0.45;
   }
 
-  .indice h3 {
-    font-family: var(--font-display);
-    font-size: clamp(1.4rem, 2.4vw, 2rem);
-    font-weight: 500;
-    border: 0;
-    margin: 0 0 1.5rem;
-    padding: 0;
-  }
-
-  .indice ul {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(16rem, 1fr));
-    gap: 0.9rem 2.5rem;
-    margin: 0;
-    padding: 0;
-    list-style: none;
-  }
-
-  .indice li {
-    display: flex;
-    align-items: center;
-    gap: 1rem;
-    padding-bottom: 0.7rem;
-    border-bottom: 1px solid color-mix(in srgb, currentColor 22%, transparent);
-  }
-
-  /* A caixa da miniatura é mais alta que larga porque metade das peças é: o
-     zíper e o viés são em pé, e numa caixa deitada eles encolhiam até virar
-     risco. */
-  .indice li :global(img) {
-    width: 3.5rem;
-    height: 3.2rem;
-    object-fit: contain;
-    flex: none;
-  }
-
-  .indice span {
-    font-size: 0.95rem;
-    line-height: 1.3;
-  }
+  /* Os aviamentos moram em PranchaAviamentos.astro. */
 </style>
 
 <script>
   import { gsap, mm, COM_MOVIMENTO, dur, curva } from "../lib/motion";
+  import { fichaMaisPerto } from "../lib/materioteca";
 
   // Camada 2: o palco fixo. A entrada que estiver no meio da tela manda na
   // amostra grande. Só em tela larga e só para quem não pediu menos movimento;
@@ -333,6 +268,7 @@ const catalogo = tecidos;
     caixa.classList.add("armada");
     gsap.set(grandes, { opacity: 0 });
     gsap.set(grandes[0], { opacity: 1 });
+    entradas[0].setAttribute("data-entrada-acesa", "");
 
     let atual = 0;
 
@@ -343,6 +279,8 @@ const catalogo = tecidos;
     // ligada. Dava denim na tela com a ficha do couro sintético.
     const mostrar = (i: number) => {
       if (i === atual) return;
+      entradas[atual].removeAttribute("data-entrada-acesa");
+      entradas[i].setAttribute("data-entrada-acesa", "");
       atual = i;
       gsap.to(grandes, {
         opacity: (k: number) => (k === i ? 1 : 0),
@@ -365,29 +303,63 @@ const catalogo = tecidos;
     // o scroll real do documento, então ele funciona aqui como já funciona no
     // MenuConstelação.
     //
-    // A margem esmaga a raiz numa linha só, a 55% da tela. Como as entradas se
+    // A margem esmaga a raiz numa linha só, na altura do centro da amostra
+    // grudada (o `top` do palco mais meia moldura). Como as entradas se
     // encostam, exatamente uma cruza essa linha de cada vez.
-    const olho = new IntersectionObserver(
-      (vistas) => {
-        for (const vista of vistas) {
-          if (vista.isIntersecting) mostrar(entradas.indexOf(vista.target as HTMLElement));
-        }
-      },
-      { rootMargin: "-55% 0px -45% 0px", threshold: 0 },
-    );
+    //
+    // O aviso do observador é só o gatilho; quem decide é `fichaMaisPerto`,
+    // medida na hora. Depois de um salto a linha pode cair fora de todas as
+    // fichas (no vão até os aviamentos, por exemplo) e nenhuma avisa que entrou:
+    // a amostra ficava presa na anterior, a sarja ao lado da ficha do denim. A
+    // ficha mais perto da linha resolve as duas pontas.
+    const palco = caixa.querySelector<HTMLElement>(".palco");
+    const moldura = caixa.querySelector<HTMLElement>(".moldura");
+    const linhaEmPx =
+      parseFloat(palco ? getComputedStyle(palco).top : "0") + (moldura?.offsetHeight ?? 0) / 2;
+    const linhaEmPorcento = Math.min(95, Math.max(5, (linhaEmPx / innerHeight) * 100));
+
+    const acenderMaisPerto = () =>
+      mostrar(
+        fichaMaisPerto(
+          entradas.map((entrada) => entrada.getBoundingClientRect()),
+          (innerHeight * linhaEmPorcento) / 100,
+        ),
+      );
+
+    const olho = new IntersectionObserver(acenderMaisPerto, {
+      rootMargin: `-${linhaEmPorcento}% 0px -${100 - linhaEmPorcento}% 0px`,
+      threshold: 0,
+    });
     entradas.forEach((entrada) => olho.observe(entrada));
+
+    // A segunda rede: um salto que vem de fora da seção e cai abaixo da lista
+    // não cruza ficha nenhuma na linha, mas traz a materioteca para dentro da
+    // tela. Quando ela entra (ou sai), escolhe-se de novo.
+    const vigia = new IntersectionObserver(acenderMaisPerto, { threshold: 0 });
+    vigia.observe(caixa);
+
+    // A terceira: um salto que leva a linha de cima de todas as fichas para
+    // baixo de todas, com a materioteca na tela antes e depois (barra de
+    // rolagem arrastada depressa, `End`), não cruza ficha nem muda a interseção
+    // da materioteca, e nenhum dos dois observadores avisa: ficava a Alicia ao
+    // lado da ficha do Denim. O `scrollend` vem uma vez por rolagem, não a cada
+    // quadro, e a escolha é pela medida da hora, então chamar a mais é inócuo.
+    window.addEventListener("scrollend", acenderMaisPerto);
+    acenderMaisPerto();
 
     // Quem tira a amostra de cena no fim da seção é o próprio sticky, não um
     // segundo observador. O palco é grudado dentro da grade das fichas e
-    // desgruda com ela; a moldura tem 68svh num palco de 100svh, então sobram
-    // 16svh de folga embaixo dela e ela nunca alcança a primeira fileira de
-    // aviamentos. Houve aqui um IO que apagava o palco quando o índice chegava
-    // — e ele engolia a última amostra: apagava com a ficha do Denim ainda
-    // inteira no meio da tela, uns 360px antes de ela sair por cima. Na ordem
-    // natural a ficha sai primeiro e a amostra logo atrás.
+    // desgruda com ela, então nunca alcança os aviamentos. Houve aqui um IO que
+    // apagava o palco quando os aviamentos chegavam, e ele engolia a última
+    // amostra: apagava com a ficha do Denim ainda inteira no meio da tela, uns
+    // 360px antes de ela sair por cima. Na ordem natural a ficha sai primeiro e
+    // a amostra logo atrás.
 
     return () => {
       olho.disconnect();
+      vigia.disconnect();
+      window.removeEventListener("scrollend", acenderMaisPerto);
+      entradas.forEach((entrada) => entrada.removeAttribute("data-entrada-acesa"));
       caixa.classList.remove("armada");
     };
   });

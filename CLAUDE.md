@@ -15,6 +15,7 @@ fica só o que vale para a página inteira.
 | `npm run build` | build estático para `dist/` |
 | `npm run preview` | serve o `dist/` já construído |
 | `npx astro check` | checagem de tipos |
+| `npm test` | testes das funções puras (`tests/*.test.mjs`) com o `node --test` do próprio Node, sem dependência. Pede Node 23.6 ou mais novo, que importa `.ts` direto; o script passa um glob, porque o `node --test` não aceita pasta |
 
 `astro check` e o build passarem **não** é conferir: metade das armadilhas
 abaixo passou pelos dois. Quem confere olhando é a skill
@@ -191,10 +192,15 @@ repetir uma por seção.
   remede primeiro** — o contrário do que a skill `gsap-scrolltrigger` afirma
   (ela é cópia do upstream e não se edita; a regra de verdade está no sort da
   linha 2655 de `node_modules/gsap/ScrollTrigger.js`).
-  Onde a medida não é necessária, melhor não medir: na materioteca quem escolhe
-  a amostra acesa é um `IntersectionObserver` com `rootMargin` esmagando a raiz
-  numa linha a 55% da tela. Ele não guarda medida nenhuma — o navegador
-  recalcula a interseção a cada quadro.
+  Onde a medida não é necessária, melhor não medir: na materioteca a amostra
+  acesa não depende de medida guardada pelo ScrollTrigger. A linha de leitura é
+  o centro da amostra grudada, calculado uma vez dentro do `mm.add`. Um
+  `IntersectionObserver` com `rootMargin` esmagando a raiz nessa linha só
+  **dispara** a escolha. Quem **decide** é `fichaMaisPerto`
+  (`src/lib/materioteca.ts`), com a medida feita na hora. Mais duas redes
+  pegam os saltos que não cruzam ficha nenhuma: um segundo IO sobre a
+  materioteca inteira e o `scrollend`. Detalhes no `CLAUDE.md` de
+  `src/components/`, seção PainelTecidos.
 - **O mesmo `data-*` em duas seções.** `querySelector` devolve o primeiro da
   página. O `PainelEstampas` procurava `[data-cartela]`, que é também da
   `CartelaCores`, 8.000px acima: o parallax e a segunda rede da varredura

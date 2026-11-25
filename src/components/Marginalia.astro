@@ -21,6 +21,7 @@ import { Image } from "astro:assets";
 import { versos as recortar, repartir } from "../lib/paredes";
 import type { FotoParede } from "../lib/paredes";
 import { acaso } from "../lib/acaso";
+import { alturaEstimada, dividirMargens, TELA_REFERENCIA_MOOD } from "../lib/margens";
 
 interface Props {
   fotos: FotoParede[];
@@ -40,22 +41,37 @@ const {
 const versos = recortar(paragrafos);
 
 /**
- * Uma estrofe por verso, com as fotos daquela altura do texto repartidas entre
- * as duas margens. Índices pares para a esquerda e ímpares para a direita, e
- * não a primeira metade para um lado: assim as proporções se misturam e as
- * duas margens crescem mais ou menos juntas, em vez de uma ficar com todas as
- * deitadas e a outra com todas as em pé.
+ * A largura (fração da coluna) e a velocidade do parallax de cada foto saem do
+ * índice dela **na parede**, e não da ordem em que é desenhada: assim a divisão
+ * entre as margens não muda o tamanho de foto nenhuma.
  */
-const grupos = repartir(fotos, versos.length);
-
-const estrofes = versos.map((verso, i) => ({
-  verso,
-  esquerda: grupos[i].filter((_, j) => j % 2 === 0),
-  direita: grupos[i].filter((_, j) => j % 2 === 1),
+const medidas = fotos.map((foto, k) => ({
+  foto,
+  larguraPorcento: Math.round(80 + acaso(k, 11) * 20),
+  velocidade: Math.round(26 + acaso(k, 7) * 46),
 }));
 
-/** Numeração corrida das fotos — é dela que saem a largura e a velocidade. */
-let n = 0;
+/**
+ * Uma estrofe por verso, com as fotos daquela altura do texto repartidas entre
+ * as duas margens **pela altura**, para as duas colunas terminarem quase juntas
+ * (ver src/lib/margens.ts). A divisão por índice par e ímpar, que havia aqui,
+ * batia com a alternância deitada/em pé da parede e deixava uma margem com todas
+ * as deitadas e a outra com todas as em pé.
+ */
+const grupos = repartir(medidas, versos.length);
+
+const estrofes = versos.map((verso, i) => {
+  const grupo = grupos[i];
+  const alturas = grupo.map((m) =>
+    alturaEstimada({ aspect: m.foto.aspect, largura: m.larguraPorcento / 100 }, TELA_REFERENCIA_MOOD),
+  );
+  const { esquerda, direita } = dividirMargens(alturas, TELA_REFERENCIA_MOOD);
+  return {
+    verso,
+    esquerda: esquerda.map((j) => grupo[j]),
+    direita: direita.map((j) => grupo[j]),
+  };
+});
 
 const [inicial = "", ...restoDaAbertura] = [...(versos[0]?.texto ?? "")];
 const abertura = restoDaAbertura.join("");
@@ -90,28 +106,25 @@ const abertura = restoDaAbertura.join("");
 
           {[esquerda, direita].map((lado, ladoIndice) => (
             <div class:list={["margem", ladoIndice === 0 ? "esq" : "dir"]}>
-              {lado.map((f) => {
-                const k = n++;
-                return (
-                  <div
-                    class="anotacao"
-                    data-margem
-                    data-velocidade={Math.round(26 + acaso(k, 7) * 46)}
-                    style={`--largura:${Math.round(80 + acaso(k, 11) * 20)}%; --aspect:${f.aspect}`}
-                  >
-                    <div class="gira papel" style={`--giro:${f.giro}deg`}>
-                      <Image
-                        src={f.src}
-                        alt={f.alt}
-                        widths={[240, 400, 560]}
-                        sizes="(min-width: 900px) 24rem, 45vw"
-                        format="webp"
-                        quality={84}
-                      />
-                    </div>
+              {lado.map(({ foto, larguraPorcento, velocidade }) => (
+                <div
+                  class="anotacao"
+                  data-margem
+                  data-velocidade={velocidade}
+                  style={`--largura:${larguraPorcento}%; --aspect:${foto.aspect}`}
+                >
+                  <div class="gira papel" style={`--giro:${foto.giro}deg`}>
+                    <Image
+                      src={foto.src}
+                      alt={foto.alt}
+                      widths={[240, 400, 560]}
+                      sizes="(min-width: 900px) 24rem, 45vw"
+                      format="webp"
+                      quality={84}
+                    />
                   </div>
-                );
-              })}
+                </div>
+              ))}
             </div>
           ))}
         </div>

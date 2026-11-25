@@ -1,0 +1,664 @@
+---
+/**
+ * O fashion filme da coleção, no YouTube da Vitória (40 s).
+ *
+ * **O player é uma peça do book, não uma caixa do YouTube.** A capa é o primeiro
+ * quadro do filme (o sofá vazio, com a manta de crochê), emoldurada por uma
+ * costura tracejada como a das cartelas, com a estrelinha clicável (ver
+ * `EstrelaClicavel`) no lugar do triângulo de play. O título "Triádico" vem
+ * escrito por cima, em Playfair, como num letreiro de abertura.
+ *
+ * **O player só nasce no clique, e os controles são nossos.** O iframe do
+ * YouTube puxa centenas de kB de script antes de qualquer toque, então a capa
+ * (`src/assets/filme/capa.jpg`) só dá lugar ao player quando alguém pede. Ele é
+ * criado pela IFrame API com `controls: 0`, e a barra de baixo (play, costura de
+ * progresso, mudo, tela cheia) é desta seção. O iframe fica com
+ * `pointer-events: none`: o YouTube nunca recebe o mouse, então não mostra o
+ * título nem a barra dele. Na pausa e no fim, um véu desfocado cobre o que o
+ * YouTube desenha por baixo. O logo do YouTube pode aparecer, e é do contrato
+ * dele; não dá para tirar. Sem JS, a capa é um link para o vídeo. Trocar de
+ * vídeo é trocar `idVideo`, a capa e a duração.
+ *
+ * Nada aqui esconde nem anima por scroll: sem ScrollTrigger, sem
+ * `refreshPriority`. A seção tem a altura de uma tela, abaixo da barra do
+ * sumário, e o quadro 16:9 cresce com ela (limitado pela altura em `svh`).
+ */
+import { Image } from "astro:assets";
+import capa from "../assets/filme/capa.jpg";
+import EstrelaClicavel from "./EstrelaClicavel.astro";
+
+const idVideo = "Y-mYQOoE3Yg";
+const duracao = "0:40";
+const enderecoVideo = `https://www.youtube.com/watch?v=${idVideo}`;
+---
+
+<figure class="painel-filme w-full px-6">
+
+  <div class="moldura">
+    <div class="quadro" data-filme-quadro data-video={idVideo} data-estado="parado">
+      <div class="tela" data-filme-tela></div>
+      <a
+        class="capa-filme"
+        href={enderecoVideo}
+        target="_blank"
+        rel="noopener noreferrer"
+        data-filme-abrir
+        aria-label={`Assistir ao fashion filme Triádico, ${duracao}`}
+      >
+        <Image
+          src={capa}
+          alt="Primeiro quadro do filme: um sofá verde vazio, com uma manta de crochê colorida sobre o braço"
+          widths={[640, 1280, 1600]}
+          sizes="(min-width: 1024px) 64rem, 100vw"
+          format="webp"
+          quality={86}
+        />
+        <span class="desfoque" aria-hidden="true"></span>
+        <span class="veu" aria-hidden="true"></span>
+        <EstrelaClicavel class="play" tamanho={150} />
+        <span class="rotulo-estado" aria-hidden="true" data-filme-rotulo></span>
+        <span class="letreiro" aria-hidden="true">
+          <span class="letreiro-sobre">Fashion filme</span>
+          <span class="letreiro-titulo">Triádico</span>
+        </span>
+        <span class="duracao" aria-hidden="true">Assistir · {duracao}</span>
+      </a>
+      <button type="button" class="toque" data-filme-toque aria-label="Pausar" hidden></button>
+      <div class="controles" data-filme-controles hidden>
+        <button type="button" class="controle" data-filme-tocar aria-label="Tocar">
+          <svg class="icone-tocar" viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path d="M7 4.5v15l12-7.5z" fill="currentColor"></path></svg>
+          <svg class="icone-pausar" viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path d="M6 4.5h4v15H6zM14 4.5h4v15h-4z" fill="currentColor"></path></svg>
+        </button>
+        <span class="tempo" data-filme-tempo aria-hidden="true">0:00</span>
+        <input
+          class="progresso"
+          type="range"
+          min="0"
+          max="100"
+          step="0.1"
+          value="0"
+          aria-label="Posição do filme"
+          data-filme-progresso
+        />
+        <span class="tempo" data-filme-total aria-hidden="true">{duracao}</span>
+        <button type="button" class="controle" data-filme-mudo aria-label="Silenciar">
+          <svg class="icone-som" viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path d="M4 9v6h4l5 4V5L8 9zM16 8.5a5 5 0 0 1 0 7M18.5 6a8.5 8.5 0 0 1 0 12" fill="currentColor" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"></path></svg>
+          <svg class="icone-mudo" viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path d="M4 9v6h4l5 4V5L8 9zM16 9l5 6M21 9l-5 6" fill="currentColor" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"></path></svg>
+        </button>
+        <button type="button" class="controle" data-filme-tela-cheia aria-label="Tela cheia">
+          <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"></path></svg>
+        </button>
+      </div>
+    </div>
+  </div>
+</figure>
+
+<style>
+  /* A seção tem a altura de uma tela abaixo da barra do sumário (6rem) e o filme
+     cresce junto com ela, centrado: o que decide o tamanho é a altura, não um
+     teto de largura. */
+  .painel-filme {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: calc(100svh - 6rem);
+    padding-block: 2rem;
+    margin: 0;
+  }
+
+  /* A moldura é um passe-partout de papel claro, com a costura tracejada por
+     dentro, como as cartelas de amostra. Ela acompanha a largura do quadro. */
+  .moldura {
+    /* Altura útil = tela - barra (6rem) - respiro (4rem); o quadro 16:9 sai dela, e a
+       moldura soma seu passe-partout (2 × 0,9rem) nos dois eixos. */
+    --largura: min(100%, calc((100svh - 10rem - 1.8rem) * 16 / 9 + 1.8rem));
+    position: relative;
+    width: var(--largura);
+    margin-inline: auto;
+    padding: 0.9rem;
+    border-radius: 0.6rem;
+    background: var(--cor-linho-claro);
+    box-shadow: 0 18px 50px rgb(0 0 0 / 0.45);
+  }
+
+  .moldura::before {
+    content: "";
+    position: absolute;
+    inset: 0.35rem;
+    border: 1.5px dashed color-mix(in srgb, var(--cor-resistencia) 55%, transparent);
+    border-radius: 0.4rem;
+    pointer-events: none;
+  }
+
+  .quadro {
+    position: relative;
+    aspect-ratio: 16 / 9;
+    overflow: hidden;
+    border-radius: 0.25rem;
+    background: var(--cor-ruptura);
+  }
+
+  .capa-filme {
+    position: absolute;
+    inset: 0;
+    display: block;
+    color: var(--cor-linho-claro);
+    cursor: pointer;
+  }
+
+  .capa-filme :global(img) {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    border: 0;
+    object-fit: cover;
+  }
+
+  /* O véu vinho escurece a base para o letreiro ler sobre a parede clara. */
+  .veu {
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(
+      to top,
+      color-mix(in srgb, var(--cor-resistencia) 88%, transparent) 0%,
+      color-mix(in srgb, var(--cor-resistencia) 35%, transparent) 38%,
+      transparent 68%
+    );
+  }
+
+  .capa-filme :global(.play) {
+    --estrela-clicavel-cor: var(--cor-ninho);
+    position: absolute;
+    top: 44%;
+    left: 50%;
+    translate: -50% -50%;
+    transition:
+      scale var(--dur-media) var(--curva-tecido),
+      rotate var(--dur-media) var(--curva-tecido);
+  }
+
+  .capa-filme:hover :global(.play),
+  .capa-filme:focus-visible :global(.play) {
+    --estrela-clicavel-cor: var(--cor-linho-claro);
+    scale: 1.14;
+    rotate: 45deg;
+  }
+
+  .capa-filme:focus-visible {
+    outline: 3px solid var(--cor-ninho);
+    outline-offset: -6px;
+  }
+
+  .letreiro {
+    position: absolute;
+    left: 1.5rem;
+    bottom: 1.2rem;
+    display: grid;
+    gap: 0.1rem;
+  }
+
+  .letreiro-sobre {
+    font-family: var(--font-ficha);
+    font-size: 0.95rem;
+    letter-spacing: 0.28em;
+    text-transform: uppercase;
+    opacity: 0.9;
+  }
+
+  .letreiro-titulo {
+    font-family: var(--font-display);
+    font-size: clamp(2rem, 5vw, 3.6rem);
+    font-weight: 500;
+    line-height: 1;
+  }
+
+  .duracao {
+    position: absolute;
+    right: 1.5rem;
+    bottom: 1.4rem;
+    font-family: var(--font-ficha);
+    font-size: 1.05rem;
+    letter-spacing: 0.08em;
+  }
+
+  /* O iframe do YouTube é só imagem: quem recebe o mouse e o toque é a camada de
+     cima. Ele também é mais alto que o quadro, `--sobra` para cima e para baixo:
+     o vídeo cabe na largura e fica centrado, então cai exatamente no quadro, e o
+     título, o logo e a barra que o YouTube desenha nas bordas do iframe ficam na
+     parte cortada pelo `overflow: hidden`. A sobra precisa ser maior que essas
+     faixas (~70px). Em tela cheia a sobra zera, senão cortaria o vídeo. */
+  .tela {
+    --sobra: 6rem;
+    position: absolute;
+    inset: calc(var(--sobra) * -1) 0;
+    pointer-events: none;
+  }
+
+  .tela :global(iframe) {
+    display: block;
+    width: 100%;
+    height: 100%;
+    border: 0;
+    pointer-events: none;
+  }
+
+  .quadro:fullscreen .tela {
+    --sobra: 0rem;
+  }
+
+  /* A capa cobre o player até ele tocar; depois só volta como véu de pausa. */
+  .capa-filme {
+    transition: opacity var(--dur-rapida) var(--curva-fio);
+  }
+
+  .quadro[data-estado="tocando"] .capa-filme {
+    opacity: 0;
+    pointer-events: none;
+  }
+
+  .quadro:is([data-estado="pausado"], [data-estado="fim"]) .capa-filme :global(img),
+  .quadro:is([data-estado="pausado"], [data-estado="fim"]) .letreiro,
+  .quadro:is([data-estado="pausado"], [data-estado="fim"]) .duracao {
+    opacity: 0;
+  }
+
+  .quadro:not([data-estado="parado"]) .letreiro,
+  .quadro:not([data-estado="parado"]) .duracao {
+    display: none;
+  }
+
+  .desfoque {
+    position: absolute;
+    inset: 0;
+    opacity: 0;
+    background: color-mix(in srgb, var(--cor-resistencia) 62%, transparent);
+    backdrop-filter: blur(18px);
+    transition: opacity var(--dur-rapida) var(--curva-fio);
+  }
+
+  .quadro:is([data-estado="pausado"], [data-estado="fim"]) .desfoque {
+    opacity: 1;
+  }
+
+  .quadro[data-estado="carregando"] .capa-filme :global(.play) {
+    animation: respirar 1.4s ease-in-out infinite alternate;
+  }
+
+  @keyframes respirar {
+    to {
+      scale: 0.82;
+      rotate: 30deg;
+    }
+  }
+
+  .rotulo-estado {
+    position: absolute;
+    top: calc(44% + 5.4rem);
+    left: 50%;
+    translate: -50% 0;
+    font-family: var(--font-ficha);
+    font-size: 1.15rem;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+  }
+
+  .toque {
+    position: absolute;
+    inset: 0 0 3.6rem;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    cursor: pointer;
+  }
+
+  .toque[hidden],
+  .controles[hidden] {
+    display: none;
+  }
+
+  .controles {
+    position: absolute;
+    inset: auto 0 0;
+    display: flex;
+    align-items: center;
+    gap: 0.7rem;
+    padding: 1.4rem 1rem 0.7rem;
+    background: linear-gradient(
+      to top,
+      color-mix(in srgb, var(--cor-ruptura) 78%, transparent),
+      transparent
+    );
+    color: var(--cor-linho-claro);
+  }
+
+  .controle {
+    display: grid;
+    place-items: center;
+    flex: none;
+    width: 2.4rem;
+    height: 2.4rem;
+    padding: 0;
+    border: 0;
+    border-radius: 999px;
+    background: transparent;
+    color: inherit;
+    cursor: pointer;
+    transition: color var(--dur-rapida) var(--curva-fio);
+  }
+
+  .controle:hover,
+  .controle:focus-visible {
+    color: var(--cor-ninho);
+  }
+
+  .controle:focus-visible,
+  .progresso:focus-visible {
+    outline: 2px solid var(--cor-ninho);
+    outline-offset: 2px;
+  }
+
+  .icone-pausar,
+  .icone-mudo {
+    display: none;
+  }
+
+  .quadro[data-estado="tocando"] .icone-tocar,
+  .quadro[data-mudo] .icone-som {
+    display: none;
+  }
+
+  .quadro[data-estado="tocando"] .icone-pausar,
+  .quadro[data-mudo] .icone-mudo {
+    display: block;
+  }
+
+  .tempo {
+    flex: none;
+    min-width: 2.6rem;
+    font-family: var(--font-ficha);
+    font-size: 1rem;
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* A barra de progresso é uma costura: tracejada, preenchida de dourado até
+     onde o filme foi, com uma estrelinha de quatro pontas no lugar do botão. */
+  .progresso {
+    --p: 0%;
+    flex: 1;
+    height: 1.6rem;
+    margin: 0;
+    appearance: none;
+    background: transparent;
+    cursor: pointer;
+  }
+
+  .progresso::-webkit-slider-runnable-track {
+    height: 2px;
+    background:
+      linear-gradient(90deg, var(--cor-ninho) var(--p), transparent var(--p)),
+      repeating-linear-gradient(90deg, rgb(226 226 225 / 0.65) 0 6px, transparent 6px 11px);
+  }
+
+  .progresso::-moz-range-track {
+    height: 2px;
+    background:
+      linear-gradient(90deg, var(--cor-ninho) var(--p), transparent var(--p)),
+      repeating-linear-gradient(90deg, rgb(226 226 225 / 0.65) 0 6px, transparent 6px 11px);
+  }
+
+  .progresso::-webkit-slider-thumb {
+    width: 20px;
+    height: 20px;
+    margin-top: -9px;
+    appearance: none;
+    border: 0;
+    background: var(--cor-ninho);
+    clip-path: polygon(50% 0, 62% 38%, 100% 50%, 62% 62%, 50% 100%, 38% 62%, 0 50%, 38% 38%);
+  }
+
+  .progresso::-moz-range-thumb {
+    width: 20px;
+    height: 20px;
+    border: 0;
+    border-radius: 0;
+    background: var(--cor-ninho);
+    clip-path: polygon(50% 0, 62% 38%, 100% 50%, 62% 62%, 50% 100%, 38% 62%, 0 50%, 38% 38%);
+  }
+
+  .quadro:fullscreen {
+    aspect-ratio: auto;
+    border-radius: 0;
+  }
+
+  .quadro:fullscreen .toque {
+    bottom: 3.6rem;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .quadro[data-estado="carregando"] .capa-filme :global(.play) {
+      animation: none;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .capa-filme :global(.play) {
+      transition: none;
+    }
+
+    .capa-filme:hover :global(.play),
+    .capa-filme:focus-visible :global(.play) {
+      scale: 1;
+      rotate: 0deg;
+    }
+  }
+</style>
+
+<script>
+  // O YouTube é carregado quando a seção chega perto da tela (uma tela antes), e
+  // o player fica parado atrás da capa até o clique. A IFrame API cria o player
+  // sem controles e o resto (play, costura, mudo, tela cheia) é desta seção.
+  type Jogador = {
+    playVideo(): void;
+    pauseVideo(): void;
+    seekTo(segundos: number, adiante: boolean): void;
+    mute(): void;
+    unMute(): void;
+    getCurrentTime(): number;
+    getDuration(): number;
+  };
+  type EstadoYT = { data: number };
+  interface ApiYT {
+    Player: new (
+      alvo: HTMLElement,
+      opcoes: {
+        videoId: string;
+        host: string;
+        playerVars: Record<string, number | string>;
+        events: { onReady: () => void; onStateChange: (e: EstadoYT) => void };
+      },
+    ) => Jogador;
+  }
+  declare global {
+    interface Window {
+      YT?: ApiYT;
+      onYouTubeIframeAPIReady?: () => void;
+    }
+  }
+
+  const quadro = document.querySelector<HTMLElement>("[data-filme-quadro]");
+  const abrir = quadro?.querySelector<HTMLAnchorElement>("[data-filme-abrir]");
+
+  const carregarApi = () =>
+    new Promise<ApiYT>((resolve) => {
+      if (window.YT?.Player) return resolve(window.YT);
+      window.onYouTubeIframeAPIReady = () => resolve(window.YT!);
+      const roteiro = document.createElement("script");
+      roteiro.src = "https://www.youtube.com/iframe_api";
+      document.head.append(roteiro);
+    });
+
+  const formatar = (segundos: number) => {
+    const inteiro = Math.max(0, Math.floor(segundos));
+    return `${Math.floor(inteiro / 60)}:${String(inteiro % 60).padStart(2, "0")}`;
+  };
+
+  if (quadro && abrir) {
+    const tela = quadro.querySelector<HTMLElement>("[data-filme-tela]")!;
+    const toque = quadro.querySelector<HTMLButtonElement>("[data-filme-toque]")!;
+    const controles = quadro.querySelector<HTMLElement>("[data-filme-controles]")!;
+    const botaoTocar = quadro.querySelector<HTMLButtonElement>("[data-filme-tocar]")!;
+    const botaoMudo = quadro.querySelector<HTMLButtonElement>("[data-filme-mudo]")!;
+    const botaoTelaCheia = quadro.querySelector<HTMLButtonElement>("[data-filme-tela-cheia]")!;
+    const progresso = quadro.querySelector<HTMLInputElement>("[data-filme-progresso]")!;
+    const tempo = quadro.querySelector<HTMLElement>("[data-filme-tempo]")!;
+    const total = quadro.querySelector<HTMLElement>("[data-filme-total]")!;
+    const rotulo = quadro.querySelector<HTMLElement>("[data-filme-rotulo]")!;
+
+    let jogador: Jogador | null = null;
+    let relogio = 0;
+    let iniciado = false;
+    let estado = "parado";
+
+    const mudarEstado = (novo: string) => {
+      estado = novo;
+      quadro.dataset.estado = novo;
+      const tocando = novo === "tocando";
+      botaoTocar.setAttribute("aria-label", tocando ? "Pausar" : "Tocar");
+      toque.setAttribute("aria-label", "Pausar");
+      toque.hidden = !tocando;
+      rotulo.textContent = novo === "fim" ? "Rever" : novo === "pausado" ? "Continuar" : "";
+      abrir.setAttribute(
+        "aria-label",
+        novo === "fim" ? "Rever o filme" : novo === "pausado" ? "Continuar o filme" : "Assistir ao fashion filme Triádico",
+      );
+    };
+
+    const atualizarBarra = () => {
+      if (!jogador) return;
+      const duracaoTotal = jogador.getDuration() || 0;
+      const atual = jogador.getCurrentTime() || 0;
+      if (duracaoTotal > 0) {
+        progresso.max = String(duracaoTotal);
+        total.textContent = formatar(duracaoTotal);
+      }
+      progresso.value = String(atual);
+      progresso.style.setProperty("--p", `${duracaoTotal ? (atual / duracaoTotal) * 100 : 0}%`);
+      tempo.textContent = formatar(atual);
+    };
+
+    const alternar = () => {
+      if (!jogador) return;
+      if (estado === "tocando") jogador.pauseVideo();
+      else jogador.playVideo();
+    };
+
+    // O player é montado antes do clique, parado e escondido atrás da capa, quando
+    // a seção chega perto da tela: o clique só dá o play (medido: ~1 s até tocar,
+    // contra ~4 s montando tudo no clique). O botão de pausa que o YouTube mostra
+    // no centro nos primeiros ~3 s de reprodução é do player novo dele, aparece
+    // mesmo com `controls: 0`, em youtube.com e em youtube-nocookie.com, e mora
+    // dentro do iframe: o CSS daqui não o alcança.
+    let pronto = false;
+    let pedido = false;
+
+    const preparar = async () => {
+      if (iniciado) return;
+      iniciado = true;
+      const api = await carregarApi();
+      const alvo = document.createElement("div");
+      tela.append(alvo);
+      jogador = new api.Player(alvo, {
+        videoId: quadro.dataset.video ?? "",
+        host: "https://www.youtube-nocookie.com",
+        playerVars: {
+          controls: 0,
+          rel: 0,
+          modestbranding: 1,
+          playsinline: 1,
+          disablekb: 1,
+          fs: 0,
+          iv_load_policy: 3,
+          origin: location.origin,
+        },
+        events: {
+          onReady: () => {
+            pronto = true;
+            atualizarBarra();
+            if (pedido) {
+              controles.hidden = false;
+              jogador?.playVideo();
+            }
+          },
+          onStateChange: ({ data }) => {
+            // Antes do clique o player só se prepara: a capa fica como está.
+            if (!pedido) return;
+            // 1 tocando, 2 pausado, 0 fim, 3 carregando, 5 pronto
+            window.clearInterval(relogio);
+            if (data === 1) {
+              mudarEstado("tocando");
+              relogio = window.setInterval(atualizarBarra, 250);
+            } else if (data === 2) mudarEstado("pausado");
+            else if (data === 0) mudarEstado("fim");
+            else if (data === 5) mudarEstado("pausado");
+            atualizarBarra();
+          },
+        },
+      });
+    };
+
+    // Uma tela antes de o filme aparecer já basta para o player ficar pronto.
+    const vigiaFilme = new IntersectionObserver(
+      (vistas) => {
+        if (vistas.some((vista) => vista.isIntersecting)) {
+          vigiaFilme.disconnect();
+          void preparar();
+        }
+      },
+      { rootMargin: "100% 0px" },
+    );
+    vigiaFilme.observe(quadro);
+
+    // Sem JS a capa é um link; com JS o clique toca, retoma ou recomeça o filme.
+    abrir.addEventListener("click", (evento) => {
+      evento.preventDefault();
+      if (!pedido) {
+        pedido = true;
+        mudarEstado("carregando");
+        if (pronto) {
+          controles.hidden = false;
+          jogador?.playVideo();
+        } else void preparar();
+        return;
+      }
+      if (estado === "fim") jogador?.seekTo(0, true);
+      jogador?.playVideo();
+    });
+    toque.addEventListener("click", alternar);
+    botaoTocar.addEventListener("click", () => {
+      if (estado === "fim") jogador?.seekTo(0, true);
+      alternar();
+    });
+
+    progresso.addEventListener("input", () => {
+      const duracaoTotal = Number(progresso.max) || 1;
+      progresso.style.setProperty("--p", `${(Number(progresso.value) / duracaoTotal) * 100}%`);
+      tempo.textContent = formatar(Number(progresso.value));
+    });
+    progresso.addEventListener("change", () => jogador?.seekTo(Number(progresso.value), true));
+
+    botaoMudo.addEventListener("click", () => {
+      const mudo = quadro.toggleAttribute("data-mudo");
+      if (mudo) jogador?.mute();
+      else jogador?.unMute();
+      botaoMudo.setAttribute("aria-label", mudo ? "Ativar o som" : "Silenciar");
+    });
+
+    if (document.fullscreenEnabled) {
+      botaoTelaCheia.addEventListener("click", () => {
+        if (document.fullscreenElement) void document.exitFullscreen();
+        else void quadro.requestFullscreen();
+      });
+    } else botaoTelaCheia.hidden = true;
+  }
+</script>

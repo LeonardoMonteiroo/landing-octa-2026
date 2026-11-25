@@ -1,0 +1,32 @@
+---
+/**
+ * A instrução de clique, no pé da capa (primeira tela, sem rolar): ensina uma
+ * vez o que a estrelinha significa, para o resto da página não repetir a
+ * explicação. Estática, sem revelação: nada aqui esconde conteúdo.
+ */
+import EstrelaClicavel from "./EstrelaClicavel.astro";
+---
+
+<p class="dica-estrela">
+  <EstrelaClicavel tamanho={32} />
+  <span>Onde houver uma estrelinha, é só clicar para abrir.</span>
+</p>
+
+<style>
+  /* Sobre a ilustração escurecida da capa: texto claro, sem papel de fundo. */
+  .dica-estrela {
+    position: absolute;
+    inset: auto 0 3rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.6rem;
+    margin: 0;
+    padding: 0 1.5rem;
+    color: var(--cor-linho-claro);
+    font-family: var(--font-ficha);
+    font-size: 1.05rem;
+    text-align: center;
+    text-shadow: 0 1px 6px rgb(0 0 0 / 0.6);
+  }
+</style>

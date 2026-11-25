@@ -2,6 +2,7 @@
 import { Image } from "astro:assets";
 import fios from "../assets/recortes/raster/ilustracao-fios-maos-caes.jpeg";
 import Estrela from "./Estrela.astro";
+import DicaEstrela from "./DicaEstrela.astro";
 ---
 
 <div id="capa" class="relative flex min-h-[100svh] scroll-mt-24 items-center justify-center overflow-hidden bg-linho">
@@ -45,6 +46,10 @@ import Estrela from "./Estrela.astro";
       Começar a leitura
     </a>
   </div>
+
+  {/* A instrução de clique fica na primeira tela, no pé da capa, para quem entra
+      vê-la sem rolar nada. */}
+  <DicaEstrela />
 </div>
 
 <script>

@@ -1,0 +1,236 @@
+---
+/**
+ * A prancha de aviamentos: as catorze peças soltas sobre a parede, como nas
+ * páginas 25 e 26 do book, cada uma com a estrelinha de clicável. Clicar na peça
+ * (ou na estrela) mostra o nome numa etiqueta inclinada, como as legendas do
+ * book; clicar de novo esconde.
+ *
+ * Três decisões que parecem detalhe e não são:
+ *
+ * - **`<details>` nativo, sem `<script>`.** Abre e fecha sem JS, pelo teclado
+ *   (Enter e Espaço) e com leitor de tela, que anuncia aberto/fechado. O nome
+ *   fechado é escondido pelo próprio navegador, não por CSS do projeto — a regra
+ *   da página é que nada some por CSS estático. E o leitor de tela sempre sabe o
+ *   que é a peça: o `alt` da imagem já a nomeia.
+ * - **Tamanho natural.** Cada peça aparece com a largura do arquivo dividida por
+ *   `DENSIDADE_AVIAMENTOS` (src/data/tecidos.ts). Os recortes têm de 74 a 280px e
+ *   não há originais na máquina para extrair maiores; crescer borraria. As peças
+ *   não acompanham a tela: em 2560 a prancha fica mais aberta, e é isso.
+ * - **Posições escritas à mão**, como os `pendurados` do PainelColecao: centro da
+ *   peça em % da prancha, giro de repouso e o lado de onde sai a etiqueta. A
+ *   ordem é a de `aviamentos` (o que fecha, o que regula, o que arremata), lida
+ *   da esquerda para a direita. Mexeu numa posição, abra todas as etiquetas e
+ *   confira em 1280, 1920 e 2560 que nenhuma cobre peça vizinha.
+ *
+ * Atributos com nome desta seção (`data-aviamento…`): `data-grande` é da
+ * materioteca, que apaga tudo o que casa com ele.
+ */
+import { Image } from "astro:assets";
+import EstrelaClicavel from "./EstrelaClicavel.astro";
+import { aviamentos, DENSIDADE_AVIAMENTOS } from "../data/tecidos";
+import { aviamento } from "../lib/materiais";
+
+type LadoEtiqueta = "acima" | "abaixo";
+
+/**
+ * Centro de cada peça em % da prancha (8:5, desenhada a 1216 × 760, a coluna de
+ * 76rem), em três fileiras: à esquerda o que fecha, no meio o que regula, à
+ * direita o que arremata. O lado da etiqueta foi escolhido para ela cair no vão
+ * entre as fileiras, e não em cima da peça de baixo.
+ */
+const posicoes: Record<string, { x: number; y: number; giro: number; etiqueta: LadoEtiqueta }> = {
+  "ziper-metalico": { x: 8.6, y: 30.3, giro: -4, etiqueta: "abaixo" },
+  "fecho-sutia": { x: 8.6, y: 80.3, giro: -2, etiqueta: "acima" },
+  "ziper-invisivel": { x: 27, y: 27.6, giro: 3, etiqueta: "abaixo" },
+  "botao-flexivel": { x: 28, y: 78.9, giro: -3, etiqueta: "acima" },
+  "botao-pressao": { x: 50, y: 14.5, giro: 2, etiqueta: "abaixo" },
+  rebite: { x: 50, y: 47.4, giro: 4, etiqueta: "abaixo" },
+  ilhos: { x: 50, y: 81.6, giro: -2, etiqueta: "acima" },
+  "fivela-tres-pinos": { x: 66.6, y: 15.8, giro: -5, etiqueta: "abaixo" },
+  "fivela-dois-pinos": { x: 65, y: 50, giro: 3, etiqueta: "abaixo" },
+  "regulador-metalico": { x: 66.6, y: 81.6, giro: 0, etiqueta: "acima" },
+  "argolas-metalicas": { x: 82.2, y: 18.4, giro: -3, etiqueta: "abaixo" },
+  "meia-argola": { x: 80, y: 63.2, giro: 4, etiqueta: "abaixo" },
+  "regulador-sutia": { x: 82.2, y: 89.5, giro: -2, etiqueta: "abaixo" },
+  "vies-algodao": { x: 94.2, y: 43.4, giro: 3, etiqueta: "abaixo" },
+};
+
+const pecas = aviamentos.map((a) => {
+  const posicao = posicoes[a.nome];
+  if (!posicao) throw new Error(`PranchaAviamentos: falta a posição de "${a.nome}"`);
+  const imagem = aviamento(a.nome);
+  return {
+    ...a,
+    ...posicao,
+    imagem,
+    largura: Math.round(imagem.width / DENSIDADE_AVIAMENTOS),
+    altura: Math.round(imagem.height / DENSIDADE_AVIAMENTOS),
+  };
+});
+
+const densidades = [...new Set([1, DENSIDADE_AVIAMENTOS])];
+---
+
+<section class="aviamentos" data-aviamentos aria-label="Aviamentos">
+  <h3 class="subtitulo-painel">Aviamentos</h3>
+
+  <div class="prancha">
+    {
+      pecas.map((p) => (
+        <details
+          class="peca-aviamento"
+          data-aviamento
+          data-lado={p.etiqueta}
+          style={`--x:${p.x}; --y:${p.y}; --giro:${p.giro}deg; --larg:${p.largura}px; --larg-num:${p.largura}`}
+        >
+          <summary>
+            <Image
+              src={p.imagem}
+              alt={p.alt}
+              width={p.largura}
+              height={p.altura}
+              densities={densidades}
+              format="webp"
+              quality={90}
+            />
+            <EstrelaClicavel class="selo" tamanho={28} />
+          </summary>
+          <span class="etiqueta" data-aviamento-etiqueta>
+            {p.titulo}
+          </span>
+        </details>
+      ))
+    }
+  </div>
+</section>
+
+<style>
+  /* Na coluna dos títulos, com o filete tracejado que separa da materioteca. */
+  .aviamentos {
+    width: min(100%, var(--coluna-painel));
+    margin: clamp(3rem, 6vw, 5rem) auto 0;
+    padding-top: clamp(2rem, 4vw, 3rem);
+    border-top: 1px dashed color-mix(in srgb, currentColor 45%, transparent);
+  }
+
+  h3 {
+    margin-bottom: 1.5rem;
+  }
+
+  /* Tela estreita: uma grade simples, as mesmas peças e o mesmo clique. */
+  .prancha {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(8rem, 1fr));
+    gap: 2rem 1.5rem;
+    align-items: center;
+  }
+
+  .peca-aviamento {
+    justify-self: center;
+    max-width: 100%;
+  }
+
+  .peca-aviamento[open] {
+    z-index: 2;
+  }
+
+  summary {
+    position: relative;
+    display: block;
+    width: min(var(--larg), 100%);
+    list-style: none;
+    cursor: pointer;
+  }
+
+  summary::-webkit-details-marker {
+    display: none;
+  }
+
+  summary :global(img) {
+    display: block;
+    width: 100%;
+    height: auto;
+    rotate: var(--giro);
+  }
+
+  /* O selo no canto de cima à direita da peça, dourado em repouso; no hover e no
+     foco ele escurece, como no Mapa. */
+  summary :global(.selo) {
+    position: absolute;
+    top: -0.9rem;
+    right: -1.1rem;
+  }
+
+  summary:hover,
+  summary:focus-visible {
+    --estrela-clicavel-cor: var(--cor-resistencia);
+  }
+
+  .etiqueta {
+    display: block;
+    margin-top: 0.5rem;
+    font-family: var(--font-ficha);
+    font-size: 0.95rem;
+    font-style: italic;
+    line-height: 1.2;
+    text-align: center;
+    animation: etiqueta-surge var(--dur-rapida) var(--curva-fio) both;
+  }
+
+  /* Só a opacidade e um passo curto: a etiqueta aparece, não voa. O `translate`
+     fica para o posicionamento, e por isso o passo é no `transform`. */
+  @keyframes etiqueta-surge {
+    from {
+      opacity: 0;
+      transform: translateY(0.4rem);
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .etiqueta {
+      animation: none;
+    }
+  }
+
+  /* Tela larga: a prancha do book, com as peças soltas no lugar escrito à mão.
+     A peça tem o tamanho natural quando a prancha tem a largura da coluna (1216px)
+     e encolhe junto com ela abaixo disso, então as posições em % valem em qualquer
+     tela sem uma peça invadir a vizinha. Nunca cresce além do natural. */
+  @media (min-width: 900px) {
+    .prancha {
+      position: relative;
+      display: block;
+      aspect-ratio: 8 / 5;
+      container-type: inline-size;
+    }
+
+    .peca-aviamento {
+      position: absolute;
+      left: calc(var(--x) * 1%);
+      top: calc(var(--y) * 1%);
+      translate: -50% -50%;
+    }
+
+    summary {
+      width: min(var(--larg), calc(100cqw * var(--larg-num) / 1216));
+    }
+
+    .etiqueta {
+      position: absolute;
+      left: 50%;
+      margin: 0;
+      translate: -50% 0;
+      rotate: -6deg;
+      white-space: nowrap;
+      pointer-events: none;
+    }
+
+    .peca-aviamento[data-lado="abaixo"] .etiqueta {
+      top: calc(100% + 0.4rem);
+    }
+
+    .peca-aviamento[data-lado="acima"] .etiqueta {
+      bottom: calc(100% + 0.4rem);
+    }
+  }
+</style>

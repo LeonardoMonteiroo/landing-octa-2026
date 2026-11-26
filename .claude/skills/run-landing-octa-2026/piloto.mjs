@@ -35,7 +35,11 @@ const rota = arg("rota", "").replace(/^\/+/, "")
 const ENDERECO = `http://localhost:${portaDev}/landing-octa-2026${rota ? `/${rota}` : ""}`
 
 const comando = process.argv[2] ?? "rolagem"
-const [largura, altura] = arg("tela", "1440x900").split("x").map(Number)
+// A tela da apresentação (ver "A tela é a da apresentação" no CLAUDE.md da raiz).
+const [largura, altura] = arg("tela", "2560x1440").split("x").map(Number)
+// Densidade de pixels (deviceScaleFactor). A do computador da apresentação
+// ainda não é conhecida; --densidade=2 mostra como a página fica se for 2×.
+const densidade = Number(arg("densidade", "1"))
 const saida = arg("saida", join(process.cwd(), ".piloto"))
 const portaCdp = Number(arg("porta", "9222"))
 
@@ -51,6 +55,7 @@ function acharChrome() {
     "C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe",
     "/usr/bin/google-chrome",
     "/usr/bin/chromium",
+    "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
   ].filter(Boolean)
   const achado = candidatos.find((c) => existsSync(c))
   if (!achado) throw new Error("Nenhum Chrome/Edge encontrado. Defina CHROME=<caminho>.")
@@ -253,7 +258,7 @@ async function comPagina(fn, { reduzido = false } = {}) {
     await s.enviar("Emulation.setDeviceMetricsOverride", {
       width: largura,
       height: altura,
-      deviceScaleFactor: 1,
+      deviceScaleFactor: densidade,
       mobile: false,
     })
     if (reduzido) {
@@ -395,12 +400,38 @@ async function reduzido() {
 
 async function foto() {
   const y = Number(arg("y", "0"))
-  const problemas = await comPagina(async (s) => {
-    if (y) {
+  // --ancora=estampas para na seção como o sumário para (scrollIntoView
+  // respeita o scroll-margin-top), sem precisar saber o y dela.
+  const ancora = arg("ancora", "")
+  const problemas = await comPagina(async (s, achados) => {
+    if (ancora) {
+      // Repete até a seção parar no lugar: as imagens de cima carregam depois
+      // do salto e empurram a página (no celular, a foto parava nos aviamentos).
+      for (let tentativa = 0; tentativa < 6; tentativa++) {
+        const desvio = await s.avaliar(`
+          const el = document.getElementById(${JSON.stringify(ancora)})
+          el.scrollIntoView({ behavior: "instant" })
+          return el.getBoundingClientRect().top - parseFloat(getComputedStyle(el).scrollMarginTop)`)
+        await espera(900)
+        const depois = await s.avaliar(`
+          const el = document.getElementById(${JSON.stringify(ancora)})
+          return el.getBoundingClientRect().top - parseFloat(getComputedStyle(el).scrollMarginTop)`)
+        if (Math.abs(desvio) < 2 && Math.abs(depois) < 2) break
+      }
+    } else if (y) {
       await s.avaliar(`window.scrollTo({ top: ${y}, behavior: "instant" }); return 1`)
       await espera(900)
     }
-    const nome = join(saida, `foto-${largura}x${altura}-y${y}.png`)
+    // Conteúdo mais largo que a janela é defeito em qualquer tela. Mede-se no
+    // `body`, não no `<html>`: o tokens.css corta o excesso lateral com
+    // `overflow-x: clip` em `html, body`, e aí o scrollWidth do `<html>` nunca
+    // passa da janela — o estouro some cortado em silêncio. O do `body` ainda
+    // conta o conteúdo inteiro (medido: 3000px de conteúdo, `<html>` dizendo 390).
+    const larguraDoc = await s.avaliar(`return [document.body.scrollWidth, window.innerWidth]`)
+    console.log(`largura do conteúdo: ${larguraDoc[0]}px (janela ${larguraDoc[1]}px)`)
+    if (larguraDoc[0] > larguraDoc[1]) achados.push(`conteúdo estourando a janela: ${larguraDoc[0]}px numa janela de ${larguraDoc[1]}px (o overflow-x: clip corta sem avisar)`)
+    const onde = ancora ? `-${ancora}` : `-y${y}`
+    const nome = join(saida, `foto-${largura}x${altura}${densidade === 1 ? "" : `@${densidade}x`}${onde}.png`)
     await s.foto(nome)
     console.log("gravei", nome)
   })

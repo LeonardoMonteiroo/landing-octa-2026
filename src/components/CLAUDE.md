@@ -1,6 +1,6 @@
 # Contratos dos componentes
 
-Os cinco princípios gerais — **tela 1280×720**, **`refreshPriority` em todo
+Os cinco princípios gerais — **a tela é a da apresentação (2560×1440)**, **`refreshPriority` em todo
 ScrollTrigger**, **duas camadas**, **pin num `<div>` simples** e **três
 propriedades, três donos** — estão no `CLAUDE.md` da raiz, junto com as
 armadilhas já pagas. Aqui fica só o que é próprio de cada componente.
@@ -29,13 +29,44 @@ navegação, disparada pelo usuário e com pausar e parar sempre à mão. Com
 programático, então o caminho é o mesmo nos dois modos, sem ramo extra. Quem
 confere é `piloto.mjs leitura`.
 
-## PainelEstampas (a cartela de amostras)
+## PainelEstampas (as amostras soltas na parede)
 
-- A seção **não escreve nada** — sem título por peça, sem descrição, sem lista
-  de cores. O que existe de texto é o letreiro e a alternativa textual
-  (`aria-label` nos panos, `alt` nas fotos, `figcaption` na figura). Quem não vê
-  a cartela recebe o mesmo que quem vê; encher a cartela de rótulo é desfazer a
-  seção.
+- **Três grupos soltos na parede vinho, cada um com o nome embaixo:**
+  "estampa digital" (os três xadrezes e a gola do casaco com a blusa de tule),
+  "patchwork" (o retalho e a frente do casaco) e "bordado" (o bordado e o
+  desenho técnico da calça, onde ele vai no bolso de trás). A roupa encosta no
+  canto da amostra dela. As três imagens de roupa vêm do `extract:aplicacoes`
+  (recortes das fotos 9 e 3 e a calça limpa de `desenhos/11.jpeg`); o `alt` e
+  a proporção, de `aplicacoes` em `src/data/estampas.ts`. Os nomes são
+  decisão do Leonardo: é o único texto visível além do letreiro.
+- **As posições estão em `COMPOSICAO`**, em px dentro de cada grupo, e foram
+  conferidas na tela da apresentação. As três caixas têm a mesma altura para os
+  três nomes caírem na mesma linha; o desencontro mora dentro do grupo. Os
+  grupos se distribuem pela largura com flex (até 104rem, mais que a coluna dos
+  títulos: sem papel em volta, a composição usa a tela grande), quebram de
+  linha numa tela menor e, abaixo de 720px, cada grupo vira uma coluna simples,
+  sem giro. Mexeu numa posição: olhe em 2560 × 1440.
+- **Sem cartela de papel.** A versão anterior punha tudo num papel claro
+  porque o grafite dos xadrezes (61% a 80%, ver `grafite` em
+  `estampas-medidas.ts`) afundaria no vinho. Olhando na tela da apresentação, o
+  cinza do pano se lê bem contra o vinho, e o Leonardo preferiu as peças direto
+  na parede. **Não dar fundo ao grupo** para esconder as estrelas do fundo: um
+  retângulo "da cor da parede" aparece, porque a parede não é exatamente a cor
+  chapada do token. As estrelas passam por trás das peças.
+- **`isolation: isolate` no `.grupo` não sai dali:** é o que segura o forro do
+  xadrez (`z-index: -1`) dentro do grupo. Sem ele, o filete do fio vai para
+  trás da parede do capítulo.
+- **A amostra manda na hierarquia.** A roupa é a prova, não a protagonista:
+  toda imagem de aplicação tem `ALTURA_APLICACAO` (242px, o lado do rapport) e
+  as amostras costuradas têm `ALTURA_COSTURADA` (280px), maior. Nenhuma foto
+  passa do tamanho nativo do recorte (as da coleção têm 579 × 868). As fotos
+  levam sombra de papel pregado (no `.gira`, para girar junto); a calça, só a
+  sombra do contorno; nenhuma imagem de aplicação leva serrilha, porque é
+  roupa, não amostra.
+- **O xadrez não gira.** Girar reamostra, e as linhas de 1px do rapport
+  amoleceriam. O giro é das fotos, do retalho, do bordado e da calça, num
+  `.gira` de dentro — nunca no `[data-cartela-peca]`, que é do GSAP (ver "três
+  propriedades, três donos" na raiz).
 - **A amostra de pano tem 242 × 242 e esse número não é de enfeite** — é o lado
   do rapport, uma repetição inteira e nenhuma fração. A versão anterior era uma
   parede de retalhos com ~380 × 300 por peça, ou seja uma repetição e meia, e o
@@ -45,10 +76,6 @@ confere é `piloto.mjs leitura`.
   1,x. Em tela estreita a amostra encolhe (`min(242px, 68vw)`) mas o
   `background-size` **não**: ali ela mostra menos do desenho, nunca um desenho
   menor. Ver a armadilha de redimensionar um rapport, na raiz.
-- O suporte é de papel claro, e isso é medido, não gosto. Os três panos são de
-  61% a 80% grafite (ver `grafite` em `estampas-medidas.ts`); sobre o vinho da
-  parede esse grafite afunda, sobre o `--cor-linho-claro` ele volta a ter forma.
-  Pôr a cartela na cor da parede é desfazer a seção pela segunda vez.
 - A serrilha de pinking dos três panos é `clip-path: polygon()` gerado por
   `serrilha()`, e a profundidade do dente (2,6% de 242px ≈ 6px) está casada com
   a da tesoura de picotar das duas peças fotografadas. É ela que faz das cinco
@@ -59,10 +86,12 @@ confere é `piloto.mjs leitura`.
   amostra — mora num elemento **à parte** do `.pano`; ver a armadilha do
   `clip-path` com contexto de empilhamento, na raiz. E a cor dele é o fio
   dominante daquele xadrez, medido, não uma cor escolhida.
-- O único ScrollTrigger da seção move a cartela uns 10px (`--p`, o contrato do
+- O único ScrollTrigger da seção move o conjunto uns 10px (`--p`, o contrato do
   painel-conceito) e existe sobretudo pelo `onUpdate`, que é a segunda rede da
   varredura. Nada da composição depende de medida: a revelação é por
-  `IntersectionObserver`, porque esta seção vem depois de duas que pinam.
+  `IntersectionObserver`, porque esta seção vem depois de duas que pinam. As
+  oito peças e os três nomes levam `data-cartela-peca` e entram na mesma
+  revelação, grupo a grupo; a auditoria do piloto os conta junto (76 alvos).
 
 ## PainelMapa (mapa do desfile e desenhos técnicos)
 
@@ -120,8 +149,9 @@ confere é `piloto.mjs leitura`.
   `px-6` do Mapa do desfile) declara `--recuo-titulo` com a diferença. É o que faz o título
   começar no mesmo x em todo painel quando a tela é mais estreita que a coluna.
 - **Blocos retangulares ocupam a coluna e começam na mesma linha do título:** a cartela de
-  cores, a cartela de estampas, a materioteca e a prancha de aviamentos. **Composições
-  livres ficam centradas nela:** a fileira de croquis e o palco do Mapa do desfile.
+  cores, a materioteca e a prancha de aviamentos. **Composições
+  livres ficam centradas nela:** a fileira de croquis, o palco do Mapa do desfile e as
+  amostras soltas do design de superfície (estas mais largas que a coluna, até 104rem).
 - Segundo nível: `.subtitulo-painel` (0,62 do título), para o nome do tecido e para
   "Aviamentos". Nada abaixo do título de painel pode ser maior que ele.
 - O palco do Mapa do desfile desconta o bloco do título inteiro de `100svh` (ver
@@ -137,8 +167,8 @@ confere é `piloto.mjs leitura`.
   direita o corselete; as fotos não têm borda. A fotografia é o foco, por isso não entram as onze; as outras
   continuam em `src/data/colecao.ts` para quando precisar. O palco mede-se pela
   **altura da tela** (`--palco`) e a largura é 2,2× ela: as posições são
-  porcentagens do palco, e o desenho é o mesmo em 1280×720 e em telas grandes.
-  Confira sempre em 1920×1080 e 2560×1440, não só em 1280×720. A estrela é um
+  porcentagens do palco, e o desenho é o mesmo em qualquer proporção de tela 16:9.
+  Confira em 2560×1440. A estrela é um
   componente filho: o CSS escopado não a alcança, por isso `:global(.estrela)`.
   Sem pin, sem revelação, sem JS; em tela estreita os croquis vão para cima e
   as fotos para baixo, em grade.
@@ -328,7 +358,7 @@ raiz, e a dos dois tweens de opacidade na mesma peça.
   recortes 2× dos originais (`reference/`), troque a constante para 2.
 - **Posições escritas à mão** (`posicoes`), numa prancha 8:5, em três fileiras: o que
   fecha à esquerda, o que regula no meio, o que arremata à direita. A etiqueta sai para o
-  lado do vão. Mexeu numa posição: abra todas as peças e confira em 1280, 1920 e 2560 que
+  lado do vão. Mexeu numa posição: abra todas as peças e confira em 2560×1440 que
   nenhuma etiqueta ou peça cobre outra.
 - **Atributos `data-aviamento…`,** nunca `data-grande`: a materioteca apaga tudo o que
   casa com ele. E a classe é `.peca-aviamento`, nunca `.peca`, que é das peças do

@@ -22,6 +22,7 @@
  * dez da materioteca é cada um.
  */
 import { xadrezesMedidos, proporcaoPecas } from "./estampas-medidas";
+import { proporcaoAplicacoes } from "./aplicacoes-medidas";
 import type { XadrezMedido } from "./estampas-medidas";
 
 export interface Estampa {
@@ -94,5 +95,43 @@ export const pecas: Record<string, PecaSuperficie> = {
   bordado: peca(
     "bordado",
     "Amostra de sarja crua com borda serrilhada, bordada em preto com dois ganchos enlaçados, cada um terminando num ponto redondo.",
+  ),
+};
+
+/**
+ * Onde cada superfície foi parar na roupa pronta: a imagem que fica ao lado
+ * da amostra na cartela. Os arquivos e as proporções são gerados por
+ * scripts/extract-aplicacoes.mjs; aqui fica só o texto alternativo.
+ *
+ * Os três xadrezes dividem uma imagem só — a gola do casaco e a blusa de tule,
+ * lado a lado —, porque não importa qual xadrez está em qual peça: importa que
+ * os três viraram roupa.
+ */
+export interface AplicacaoSuperficie {
+  /** Chave: liga ao arquivo src/assets/estampas/aplicacoes/<nome>.(webp|png). */
+  nome: string;
+  alt: string;
+  /** Proporção (largura / altura), medida pelo extrator. */
+  aspect: number;
+}
+
+const aplicacao = (nome: string, alt: string): AplicacaoSuperficie => {
+  const aspect = proporcaoAplicacoes[nome];
+  if (!aspect) throw new Error(`estampas: falta a proporção de "${nome}" — rode "npm run extract:aplicacoes"`);
+  return { nome, alt, aspect };
+};
+
+export const aplicacoes: Record<"xadrezes" | "retalho" | "bordado", AplicacaoSuperficie> = {
+  xadrezes: aplicacao(
+    "xadrez-gola-blusa",
+    "Duas modelos lado a lado: a gola larga do casaco marinho e a blusa de tule por baixo do corselete de couro vermelho, as duas no xadrez cinza da coleção.",
+  ),
+  retalho: aplicacao(
+    "retalho-casaco",
+    "Frente do casaco marinho, com a faixa de retalho em vinho, azul e oliva descendo da gola e cruzando na altura do quadril.",
+  ),
+  bordado: aplicacao(
+    "bordado-calca",
+    "Desenho técnico das costas da calça jeans, com o bordado da assinatura no bolso de trás.",
   ),
 };

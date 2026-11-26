@@ -28,7 +28,7 @@ Escolha **o** comando que cobre o que o usuário pediu:
 
 | O pedido / o que mudou | O que rodar |
 |---|---|
-| "roda", "sobe", "abre", "tira um print", "como ficou a seção X" | `foto --tela=1280x720 --y=<altura da seção>` |
+| "roda", "sobe", "abre", "tira um print", "como ficou a seção X" | `foto --y=<altura da seção>` |
 | Mudança só de cor, tipografia, texto, espaçamento — CSS estático | `npm run build` (ou `foto`, se ele quiser ver) |
 | Mexeu em `mm.add`, em `gsap.from/to`, em revelação, em `opacity` | `rolagem` |
 | Mexeu em âncora, `scroll-mt-*`, sumário, configuração da Lenis | `ancoras` |
@@ -86,10 +86,15 @@ node .claude/skills/run-landing-octa-2026/piloto.mjs leitura
 node .claude/skills/run-landing-octa-2026/piloto.mjs foto --tela=1366x768 --y=2200
 ```
 
-A tela de projeto é **1280×720** — é nela que se confere (`--tela=1280x720`).
-O padrão do piloto ainda é 1440x900 por inércia; passe a tela sempre.
+A tela é a da apresentação, **2560×1440** — é nela que se confere, e é o
+padrão do piloto.
 
-Sinalizadores: `--tela=LARGURAxALTURA` (padrão `1440x900`), `--saida=DIR`
+Sinalizadores: `--tela=LARGURAxALTURA` (padrão `2560x1440`), `--densidade=N`
+(densidade de pixels, padrão 1; `--densidade=2` mostra a página como num
+computador 2×, e a `foto` sai com `@2x` no nome), `--ancora=ID` (só na
+`foto`: para na seção como o sumário para, sem precisar do `--y`; a `foto`
+também acusa conteúdo mais largo que a janela, medido no `body`, porque o
+`overflow-x: clip` de `html, body` corta o excesso em silêncio), `--saida=DIR`
 (padrão `.piloto/`, já ignorado pelo git), `--passos=N` (quadros do `rolagem`,
 padrão 14), `--porta=N` (porta do CDP, padrão 9222), `--porta-dev=N` (porta do
 astro, padrão 4321), `--cabeca` (abre com janela em vez de headless),

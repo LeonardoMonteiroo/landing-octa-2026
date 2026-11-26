@@ -20,13 +20,15 @@ fica só o que vale para a página inteira.
 `astro check` e o build passarem **não** é conferir: metade das armadilhas
 abaixo passou pelos dois. Quem confere olhando é a skill
 `run-landing-octa-2026` (`piloto.mjs`) — revelações do GSAP, ponto de parada
-das âncoras, movimento reduzido, `--tela=1280x720`; `piloto.mjs leitura`
+das âncoras, movimento reduzido, na tela da apresentação (2560×1440, o
+padrão do piloto); `piloto.mjs leitura`
 percorre a `LeituraAutomatica`.
 
 ### Extratores
 
 Reescrevem arquivos **gerados**. Nunca editar a saída à mão — editar o script
-e rodar de novo. Todos leem de `reference/`.
+e rodar de novo. Todos leem de `reference/`, menos o `extract:aplicacoes`, que
+lê de `src/assets/`.
 
 | Comando | Gera |
 | --- | --- |
@@ -38,6 +40,7 @@ e rodar de novo. Todos leem de `reference/`.
 | `npm run extract:cores` | `src/data/formas-cores.ts` — novelo e meadas |
 | `npm run extract:tecidos` | `src/assets/tecidos/` e `src/assets/aviamentos/` |
 | `npm run extract:estampas` | `src/assets/estampas/` e `src/data/estampas-medidas.ts` |
+| `npm run extract:aplicacoes` | `src/assets/estampas/aplicacoes/` (os recortes das fotos 9 e 3 e a calça limpa do desenho técnico) e `src/data/aplicacoes-medidas.ts`; `--conferir` grava `.piloto/calca-bordado-lupas.png`. O potrace **não** é dependência do projeto (traz ~77 pacotes): a primeira rodada o instala em `node_modules/.cache/potrace-<versão>/` |
 | `npm run extract:croquis` | `src/assets/croquis/` e `src/data/croquis-medidas.ts`; `--conferir` grava `.piloto/croquis-antes-depois.png` |
 | `npm run extract:estrelas` | `src/data/estrelasFundo.ts` |
 | `npm run conferir:estrelas` | `.piloto/estrelas-vetorizadas.png`, para comparar no pixel |
@@ -94,14 +97,24 @@ comentários: `painel`, `recorte`, `estrela`, `velinha`, `capitulo`, `giro`,
 Cinco regras que os contratos de componente referenciam pelo nome, em vez de
 repetir uma por seção.
 
-- **A tela de projeto é 1280×720.** Não é uma página responsiva: ela é
-  desenhada para esse quadro, e é nele que se confere (`--tela=1280x720` no
-  piloto). O que existe de `@media` e de camada sem JS continua valendo — é
-  acessibilidade e degradação, não um segundo desenho. Numa tela baixa o que
-  quebra primeiro é altura: `100svh` de painel **não cabe** abaixo da barra do
-  sumário, que come 6rem (o `scroll-mt-24` das seções). O painel do conceito
-  usa `max-h-[calc(100svh-6rem)]` por isso — com `max-h-screen`, a legenda do
-  conto caía embaixo da barra quando se chegava ali pela âncora.
+- **A tela é a da apresentação: 2560×1440.** O book vai ser apresentado ao
+  vivo numa tela de 2560×1440 (a área que o navegador enxerga; a densidade de
+  pixels do computador da apresentação ainda não é conhecida). É nela que se
+  desenha e se confere, olhando o pixel — é o padrão do piloto. Não é uma
+  página responsiva no sentido do celular: o que existe de `@media` e de camada
+  sem JS continua valendo — é acessibilidade e degradação, não um segundo
+  desenho. As medidas "em 1280" que aparecem nos contratos são histórico de
+  quando se conferia lá; não são alvo.
+  - O limite na tela grande é a resolução dos arquivos: as fotos vieram
+    pequenas (as da coleção têm 579×868) e não há versão maior. Ampliar além do
+    tamanho nativo é decisão de cada seção, escrita no contrato dela; e, se o
+    computador da apresentação for 2×, mesmo no tamanho nativo a foto fica um
+    pouco mole. A coluna dos painéis (`--coluna-painel`, 76rem) não cresce com
+    a tela.
+  - `100svh` de painel **não cabe** abaixo da barra do sumário, que come 6rem
+    (o `scroll-mt-24` das seções). O painel do conceito usa
+    `max-h-[calc(100svh-6rem)]` por isso — com `max-h-screen`, a legenda do
+    conto caía embaixo da barra quando se chegava ali pela âncora.
 
 - **Todo ScrollTrigger leva `refreshPriority`**, tirado do mapa `prioridade` de
   `src/lib/motion.ts`, em que **quem vem antes na página leva número maior** e
@@ -268,6 +281,16 @@ repetir uma por seção.
   decide se duas ilhas são a mesma peça é medido e estreito: 30px separam as
   duas vistas do zíper invisível, que é uma peça só, e 42px separam o regulador
   da fivela, que são duas.
+- **Reconstruir sozinho o traço que a seta de legenda cortava.** Nos desenhos
+  técnicos (`src/assets/desenhos/`), as setas azuis das legendas atravessam o
+  contorno, o bolso, a barra e o bordado; apagar a seta abre um buraco no traço,
+  e por ele o fundo vaza para dentro da peça. Uma "ponte" genérica (traço escuro
+  dos dois lados do buraco, liga) não converge: curta, deixa o contorno da perna
+  aberto; longa, liga o canto do bolso ao bordado e inventa tinta. O reparo é
+  por coordenada, lida num mapa pixel a pixel, em
+  `scripts/lib/desenho-calca.mjs`; a limpeza recusa (lança "vazou") quando
+  falta reparo. Quem confere é o `extract:aplicacoes -- --conferir`, olhando a
+  lupa de cada reparo.
 - **`will-change` espalhado.** Ele fica no `.peca` e só ali — é o que dá camada
   de composição às seis peças do painel-conceito. Não espalhar para outros
   lugares, em especial não para as 18 imagens do mood.

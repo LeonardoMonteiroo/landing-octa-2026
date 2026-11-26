@@ -1,46 +1,98 @@
 ---
 /**
- * Design de superfície: a cartela de amostras.
+ * Design de superfície: as amostras soltas na parede, cada uma com a roupa em
+ * que foi usada.
  *
- * As cinco superfícies da coleção — os três xadrezes e as duas peças
- * costuradas — pregadas numa cartela de papel, como o mostruário que um
- * fornecedor manda para o ateliê.
+ * Três grupos, cada um com o nome embaixo:
+ * - "estampa digital": os três xadrezes e a gola do casaco com a blusa de tule;
+ * - "patchwork": o retalho e a frente do casaco;
+ * - "bordado": o bordado e o desenho técnico da calça, onde ele vai no bolso
+ *   de trás.
+ * Dentro do grupo as peças ficam soltas, levemente giradas, e a roupa encosta
+ * no canto da amostra dela — como amostras pregadas na parede do ateliê. As
+ * posições estão em COMPOSICAO, em px dentro de cada grupo, conferidas na tela
+ * da apresentação (2560 × 1440). Os grupos se distribuem pela largura com flex,
+ * e numa tela estreita quebram de linha; abaixo de 720px cada grupo vira uma
+ * coluna simples, sem giro.
  *
- * **A medida manda na composição.** Cada xadrez é um rapport fechado de
- * 242 × 242 que não pode ser redimensionado (ver `rapport` em
- * src/lib/superficies.ts), e por isso cada amostra tem exatamente esse lado:
- * uma repetição inteira, nenhuma fração. A parede anterior dava ~380 × 300 por
- * peça — uma repetição e meia, que o olho lê como campo cinza e não como
- * desenho: oito das onze peças não mostravam xadrez nenhum. Não é questão de
- * gosto, é de quanto do desenho cabe na casa.
+ * **A amostra manda na hierarquia.** A roupa é a prova da aplicação, não a
+ * protagonista: toda imagem de aplicação tem ALTURA_APLICACAO (242px, o lado
+ * do rapport), e as amostras costuradas têm ALTURA_COSTURADA, maior. As fotos
+ * da coleção têm 579 × 868 e nenhuma passa do tamanho nativo do recorte — a
+ * tela da apresentação é grande, e foto ampliada borra.
  *
- * **O suporte inverte.** A parede do capítulo continua vinho, mas a cartela é
- * de papel claro, e é sobre ela que o pano aparece. Os três xadrezes são de
- * 61% a 80% grafite; sobre o vinho esse grafite afunda, sobre o linho claro
- * ele volta a ter forma.
+ * **O xadrez não gira.** Cada xadrez é um rapport fechado de 242 × 242 que não
+ * pode ser redimensionado (ver `rapport` em src/lib/superficies.ts), e girar
+ * também reamostra: as linhas de 1px amoleceriam. Por isso o giro é só das
+ * fotos, do retalho, do bordado e da calça; os três panos ficam retos e a
+ * soltura vem do desencontro entre eles.
+ *
+ * **Sem a cartela de papel, na parede vinho.** A versão anterior punha tudo
+ * num papel claro porque o grafite do xadrez afundaria no vinho; olhando na
+ * tela da apresentação, o cinza do pano se lê bem contra o vinho, e o
+ * Leonardo preferiu as peças direto na parede. Cada grupo isola um contexto de
+ * empilhamento (`isolation`), que mantém o forro do xadrez (`z-index: -1`)
+ * pintando dentro do grupo, e não atrás da parede. As estrelas do fundo
+ * passam por trás das peças, como alfinetes na parede.
  *
  * **A borda é o que faz das cinco uma família.** Os três xadrezes ganham em
  * `clip-path` a mesma serrilha de pinking que as duas peças fotografadas já
- * têm de verdade no recorte. Deixam de ser "fundo" e "foto" e viram cinco
- * amostras do mesmo mostruário — que é o que elas são.
+ * têm de verdade no recorte. As imagens de aplicação não levam serrilha: são a
+ * roupa, não amostra.
  *
- * **A seção não escreve nada.** Sem título por peça, sem descrição, sem lista
- * de cores: o que tinha de ser dito está no pano. O que existe de texto é o
- * letreiro e a alternativa textual de cada peça (`aria-label` nos panos, `alt`
- * nas fotos, `figcaption` na figura). Quem não vê a cartela recebe o mesmo que
- * quem vê.
+ * **Texto: só o nome de cada grupo.** Fora o letreiro e os três nomes, o que
+ * existe é alternativa textual (`aria-label` nos panos, `alt` nas imagens,
+ * `figcaption` na figura). Quem não vê as peças recebe o mesmo que quem vê.
  *
- * Não há classe de armação a pôr nem a tirar: se o bundle de movimento falhar,
- * a cartela continua montada e parada. A coreografia só acrescenta o assentar
- * de cada amostra e o passo de paralaxe da folha.
+ * Nada some sem JS: as posições são CSS. A coreografia só acrescenta o
+ * assentar de cada peça e de cada nome (todos levam `data-cartela-peca`) e o
+ * passo de paralaxe do conjunto.
  *
  * Nenhum elemento daqui pode ganhar a utilidade `transition` do Tailwind — ela
  * inclui `opacity`, e num alvo de GSAP isso é a armadilha número um do
- * CLAUDE.md.
+ * CLAUDE.md. O giro mora num `.gira` de dentro, nunca no `[data-cartela-peca]`,
+ * que é de quem o GSAP mexe (ver "três propriedades, três donos" na raiz).
  */
 import { Image } from "astro:assets";
-import { estampas, pecas } from "../data/estampas";
-import { pecaSuperficie, rapport } from "../lib/superficies";
+import { estampas, pecas, aplicacoes } from "../data/estampas";
+import { pecaSuperficie, rapport, aplicacaoSuperficie } from "../lib/superficies";
+
+/** Altura de toda imagem de aplicação: o lado do rapport, para a roupa nunca passar da amostra. */
+const ALTURA_APLICACAO = 242;
+/** Altura das amostras costuradas: maior que a da aplicação ao lado delas. */
+const ALTURA_COSTURADA = 280;
+
+/**
+ * A disposição solta, em px dentro de cada grupo. `largura`/`altura` são a
+ * caixa do grupo, e o nome fica no pé dela; as três caixas têm a mesma altura
+ * para os três nomes caírem na mesma linha — o desencontro mora dentro de
+ * cada grupo, não entre eles. `giro` em graus. Conferida em 2560 × 1440 —
+ * mexeu, olhe na tela.
+ */
+const COMPOSICAO = {
+  estampa: {
+    largura: 650,
+    altura: 600,
+    panos: [
+      { x: 0, y: 0 },
+      { x: 272, y: 44 },
+      { x: 56, y: 282 },
+    ],
+    aplicacao: { x: 330, y: 262, giro: 2.5 },
+  },
+  patchwork: {
+    largura: 360,
+    altura: 600,
+    amostra: { x: 8, y: 60, giro: -2 },
+    aplicacao: { x: 168, y: 280, giro: 3 },
+  },
+  bordado: {
+    largura: 430,
+    altura: 600,
+    amostra: { x: 0, y: 40, giro: 1.5 },
+    aplicacao: { x: 236, y: 280, giro: -4 },
+  },
+};
 
 /**
  * A serrilha do pinking, em `clip-path: polygon()`.
@@ -63,26 +115,70 @@ function serrilha(dentes = 20, prof = 2.6): string {
 
 const corte = serrilha();
 
+/** Larguras do srcset: a exibida, 2× e 3×, nunca acima da largura do arquivo. */
+function larguras(exibida: number, nativa: number): number[] {
+  return [...new Set([exibida, exibida * 2, exibida * 3].map((l) => Math.min(l, nativa)))];
+}
+
+/** Uma imagem solta: a largura exibida sai da altura e da proporção. */
+function imagemSolta(src: ImageMetadata, alt: string, aspect: number, altura: number, atraso: number) {
+  const exibida = Math.round(altura * aspect);
+  return { src, alt, aspect, exibida, widths: larguras(exibida, src.width), atraso: atraso.toFixed(2) };
+}
+
 const panos = estampas.map((e, i) => ({
   descricao: e.descricao,
   linha: e.linha,
   arquivo: rapport(e.nome),
   atraso: (i * 0.08).toFixed(2),
+  ...COMPOSICAO.estampa.panos[i],
 }));
 
-const fotos = [
-  { ...pecas.retalho, src: pecaSuperficie("retalho"), atraso: 0.28 },
-  { ...pecas.bordado, src: pecaSuperficie("bordado"), atraso: 0.36 },
+const golaBlusa = {
+  ...imagemSolta(aplicacaoSuperficie(aplicacoes.xadrezes.nome), aplicacoes.xadrezes.alt, aplicacoes.xadrezes.aspect, ALTURA_APLICACAO, 0.24),
+  ...COMPOSICAO.estampa.aplicacao,
+};
+
+/** Os dois grupos de amostra costurada: a amostra, a roupa ao lado e o nome. */
+const grupos = [
+  {
+    nome: "patchwork",
+    caixa: COMPOSICAO.patchwork,
+    amostra: { ...imagemSolta(pecaSuperficie("retalho"), pecas.retalho.alt, pecas.retalho.aspect, ALTURA_COSTURADA, 0.36), ...COMPOSICAO.patchwork.amostra },
+    aplicacao: {
+      ...imagemSolta(aplicacaoSuperficie(aplicacoes.retalho.nome), aplicacoes.retalho.alt, aplicacoes.retalho.aspect, ALTURA_APLICACAO, 0.44),
+      ...COMPOSICAO.patchwork.aplicacao,
+    },
+    tipo: "foto",
+    atrasoNome: "0.52",
+  },
+  {
+    nome: "bordado",
+    caixa: COMPOSICAO.bordado,
+    amostra: { ...imagemSolta(pecaSuperficie("bordado"), pecas.bordado.alt, pecas.bordado.aspect, ALTURA_COSTURADA, 0.52), ...COMPOSICAO.bordado.amostra },
+    aplicacao: {
+      ...imagemSolta(aplicacaoSuperficie(aplicacoes.bordado.nome), aplicacoes.bordado.alt, aplicacoes.bordado.aspect, ALTURA_APLICACAO, 0.6),
+      ...COMPOSICAO.bordado.aplicacao,
+    },
+    tipo: "desenho",
+    atrasoNome: "0.68",
+  },
 ];
+
+const caixaDoGrupo = (c: { largura: number; altura: number }) => `--larg:${c.largura}px; --alt:${c.altura}px`;
+const lugar = (p: { x: number; y: number }) => `--x:${p.x}px; --y:${p.y}px`;
 ---
 
-<figure class="mostruario relative left-1/2 right-1/2 -mx-[50vw] w-screen">
+<figure
+  class="mostruario relative left-1/2 right-1/2 -mx-[50vw] w-screen"
+  style={`--altura-aplicacao:${ALTURA_APLICACAO}px; --altura-costurada:${ALTURA_COSTURADA}px`}
+>
   <h2 class="titulo-painel">Design de superfície</h2>
 
-  <div class="cartela" data-mostruario>
-
-    {/* Os três panos: um rapport inteiro cada um, picotado como amostra. */}
-    <div class="fileira panos">
+  <div class="amostras-soltas" data-mostruario>
+    {/* Estampa digital: os três panos, um rapport inteiro cada um, retos e
+        desencontrados, e a gola com a blusa em que eles viraram roupa. */}
+    <div class="grupo" style={caixaDoGrupo(COMPOSICAO.estampa)}>
       {
         panos.map((p) => (
           <div
@@ -90,41 +186,46 @@ const fotos = [
             data-cartela-peca
             role="img"
             aria-label={p.descricao}
-            style={`--linha:${p.linha}; --atraso:${p.atraso}s; --corte:${corte}; --pano-1x:url(${p.arquivo.um}); --pano-2x:url(${p.arquivo.dois})`}
+            style={`${lugar(p)}; --linha:${p.linha}; --atraso:${p.atraso}s; --corte:${corte}; --pano-1x:url(${p.arquivo.um}); --pano-2x:url(${p.arquivo.dois})`}
           >
             <div class="pano" />
           </div>
         ))
       }
+      <div class="aplicacao foto" data-cartela-peca style={`${lugar(golaBlusa)}; --aspect:${golaBlusa.aspect}; --atraso:${golaBlusa.atraso}s`}>
+        <div class="gira" style={`--giro:${golaBlusa.giro}deg`}>
+          <Image src={golaBlusa.src} alt={golaBlusa.alt} widths={golaBlusa.widths} sizes={`${golaBlusa.exibida}px`} format="webp" quality={88} />
+        </div>
+      </div>
+      <p class="nome-grupo" data-cartela-peca style="--atraso:0.32s">estampa digital</p>
     </div>
 
-    {/* As duas peças costuradas. Já vêm com a serrilha de verdade no recorte —
-        nada de `clip-path` aqui, que seria picotar o que já está picotado. */}
-    <div class="fileira costuradas">
-      {
-        fotos.map((f) => (
-          <div
-            class="amostra costurada"
-            data-cartela-peca
-            style={`--aspect:${f.aspect}; --atraso:${f.atraso}s`}
-          >
-            <Image
-              src={f.src}
-              alt={f.alt}
-              widths={[300, 480, 700]}
-              sizes="(min-width: 760px) 24vw, 64vw"
-              format="webp"
-              quality={88}
-            />
+    {/* Patchwork e bordado: a amostra costurada — com a serrilha de verdade no
+        recorte, nada de `clip-path` aqui — e a roupa encostada no canto dela. */}
+    {
+      grupos.map((g) => (
+        <div class="grupo" style={caixaDoGrupo(g.caixa)}>
+          <div class="amostra costurada" data-cartela-peca style={`${lugar(g.amostra)}; --aspect:${g.amostra.aspect}; --atraso:${g.amostra.atraso}s`}>
+            <div class="gira" style={`--giro:${g.amostra.giro}deg`}>
+              <Image src={g.amostra.src} alt={g.amostra.alt} widths={g.amostra.widths} sizes={`${g.amostra.exibida}px`} format="webp" quality={88} />
+            </div>
           </div>
-        ))
-      }
-    </div>
+          <div class={`aplicacao ${g.tipo}`} data-cartela-peca style={`${lugar(g.aplicacao)}; --aspect:${g.aplicacao.aspect}; --atraso:${g.aplicacao.atraso}s`}>
+            <div class="gira" style={`--giro:${g.aplicacao.giro}deg`}>
+              <Image src={g.aplicacao.src} alt={g.aplicacao.alt} widths={g.aplicacao.widths} sizes={`${g.aplicacao.exibida}px`} format="webp" quality={88} />
+            </div>
+          </div>
+          <p class="nome-grupo" data-cartela-peca style={`--atraso:${g.atrasoNome}s`}>{g.nome}</p>
+        </div>
+      ))
+    }
   </div>
 
   <figcaption class="sr-only">
-    Cartela com as cinco superfícies da coleção: os três xadrezes, cada um numa amostra de uma
-    repetição, e as duas peças costuradas — o retalho de nove pedaços e o bordado da assinatura.
+    As superfícies da coleção e onde cada uma foi usada, em três grupos. Estampa digital: os três
+    xadrezes, cada um numa amostra de uma repetição, com a gola do casaco e a blusa de tule. Patchwork:
+    o retalho de nove pedaços com a frente do casaco. Bordado: o bordado da assinatura com o desenho
+    técnico da calça, no bolso de trás.
   </figcaption>
 </figure>
 
@@ -133,38 +234,43 @@ const fotos = [
     padding: var(--titulo-topo) var(--margem-painel) clamp(3.5rem, 8vw, 6.5rem);
   }
 
-  /* A cartela é de papel: sobre o vinho o grafite do xadrez desaparece, sobre
-     o linho claro ele volta a ter forma. A sombra é a de coisa encostada na
-     parede, a mesma do `.papel` — não a sombra difusa de card flutuando. Ela
-     ocupa a coluna do título e começa na mesma linha que ele; as amostras
-     continuam com 242px (o rapport), e o que a coluna dá a mais é papel. */
-  .cartela {
-    max-width: var(--coluna-painel);
+  /* Os três grupos na parede, espalhados pela largura da tela grande. Não é
+     a coluna dos títulos (76rem): sem papel em volta, a composição respira na
+     largura que a tela de apresentação dá. O `translate` é o passo de
+     paralaxe (`--p`, o contrato do painel-conceito). */
+  .amostras-soltas {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    align-items: flex-start;
+    row-gap: 3rem;
+    max-width: 104rem;
     margin-inline: auto;
-    padding: clamp(1.75rem, 3.4vw, 3rem) clamp(1.5rem, 3.4vw, 3.25rem) clamp(2.25rem, 4vw, 3.5rem);
-    background: var(--cor-linho-claro);
-    box-shadow: 0 0.35rem 0.75rem -0.3rem rgb(0 0 0 / 0.42);
+    padding-top: 1rem;
     translate: 0 calc(var(--p, 0) * 10px);
   }
 
-  .fileira {
-    display: flex;
-    flex-wrap: wrap;
-    justify-content: center;
-    align-items: center;
-  }
-
-  .panos {
-    gap: clamp(1.25rem, 3vw, 2.5rem);
-  }
-
-  .costuradas {
-    gap: clamp(2rem, 5vw, 4.5rem);
-    margin-top: clamp(1.25rem, 2.6vw, 2.25rem);
-  }
-
-  .amostra {
+  /* `isolation` é o que segura o forro do xadrez (`z-index: -1`) dentro do
+     grupo: sem ele, o filete do fio iria para trás da parede do capítulo.
+     Sem fundo: um fundo "da cor da parede" aparecia como retângulo, porque a
+     parede não é exatamente a cor chapada do token. */
+  .grupo {
     position: relative;
+    isolation: isolate;
+    width: var(--larg);
+    height: var(--alt);
+  }
+
+  .grupo > [data-cartela-peca] {
+    position: absolute;
+    left: var(--x);
+    top: var(--y);
+  }
+
+  .gira {
+    width: 100%;
+    height: 100%;
+    rotate: var(--giro, 0deg);
   }
 
   /* 242px é o lado do rapport: uma repetição inteira, sem reamostrar nada.
@@ -206,30 +312,94 @@ const fotos = [
   }
 
   .costurada {
-    height: 210px;
+    height: var(--altura-costurada);
     aspect-ratio: var(--aspect);
     max-width: 100%;
-    filter: drop-shadow(0 0.35rem 0.6rem rgb(0 0 0 / 0.3));
+    filter: drop-shadow(0 0.35rem 0.6rem rgb(0 0 0 / 0.35));
   }
 
-  .costurada :global(img) {
+  /* A roupa encostada na amostra: nunca mais alta que ela (ver o cabeçalho). */
+  .aplicacao {
+    height: var(--altura-aplicacao);
+    aspect-ratio: var(--aspect);
+    max-width: 100%;
+  }
+
+  /* A foto é papel pregado na parede: a sombra gira junto com ela. */
+  .foto .gira {
+    box-shadow: 0 0.4rem 0.9rem -0.3rem rgb(0 0 0 / 0.55);
+  }
+
+  /* A calça é desenho recortado: sem fundo (o PNG é transparente fora da
+     peça), só a sombra do contorno, para descolar da amostra embaixo. */
+  .desenho {
+    filter: drop-shadow(0 0.3rem 0.5rem rgb(0 0 0 / 0.35));
+  }
+
+  .costurada :global(img),
+  .aplicacao :global(img) {
     display: block;
     width: 100%;
     height: 100%;
     object-fit: contain;
   }
 
-  /* Numa tela estreita a cartela não encolhe o rapport — ela mostra menos
-     dele. O quadrado vira o que couber, e o `background-size` continua
-     nativo: reamostrar um rapport abre emenda onde não havia. */
+  /* O nome do grupo, no pé da caixa: o itálico da etiqueta dos aviamentos,
+     no tamanho de ler de longe na tela da apresentação. */
+  .grupo > .nome-grupo {
+    top: auto;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    margin: 0;
+    font-family: var(--font-ficha);
+    font-size: clamp(1.25rem, 1.1vw, 1.75rem);
+    font-style: italic;
+    letter-spacing: 0.02em;
+    text-align: center;
+  }
+
+  /* Numa tela estreita a disposição solta vira coluna: cada grupo empilha as
+     peças, sem giro, com o nome embaixo. O rapport não encolhe o desenho —
+     a amostra mostra menos dele (`background-size` continua nativo). */
   @media (max-width: 720px) {
+    .amostras-soltas {
+      flex-direction: column;
+      align-items: center;
+    }
+
+    .grupo {
+      width: auto;
+      height: auto;
+      margin-top: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 1.5rem;
+    }
+
+    /* `relative`, e não `static`: o `.pano` do xadrez se posiciona pelo forro. */
+    .grupo > [data-cartela-peca] {
+      position: relative;
+      left: 0;
+      top: 0;
+    }
+
+    .gira {
+      rotate: 0deg;
+    }
+
     .forro {
       width: min(242px, 68vw);
       height: min(242px, 68vw);
     }
 
     .costurada {
-      height: min(210px, 58vw);
+      height: min(var(--altura-costurada), 64vw);
+    }
+
+    .aplicacao {
+      height: min(var(--altura-aplicacao), 56vw);
     }
   }
 </style>
@@ -238,17 +408,17 @@ const fotos = [
   import { gsap, mm, COM_MOVIMENTO, dur, curva, prioridade } from "../lib/motion";
 
   mm.add(COM_MOVIMENTO, () => {
-    const cartela = document.querySelector<HTMLElement>("[data-mostruario]");
-    const amostras = gsap.utils.toArray<HTMLElement>("[data-cartela-peca]");
-    if (!cartela || amostras.length === 0) return;
+    const conjunto = document.querySelector<HTMLElement>("[data-mostruario]");
+    const pecas = gsap.utils.toArray<HTMLElement>("[data-cartela-peca]");
+    if (!conjunto || pecas.length === 0) return;
 
     // Quem esconde é quem revela, e os dois vivem aqui dentro: o matchMedia
     // desfaz até o gsap.set quando a preferência muda com a página aberta.
-    // Nada disso pode ir para o CSS — lá a cartela ficaria vazia para sempre
-    // se o bundle falhasse.
-    gsap.set(amostras, { opacity: 0, y: 14 });
+    // Nada disso pode ir para o CSS — lá as peças ficariam invisíveis para
+    // sempre se o bundle falhasse.
+    gsap.set(pecas, { opacity: 0, y: 14 });
 
-    const pendentes = new Set(amostras);
+    const pendentes = new Set(pecas);
 
     const assentar = (peca: HTMLElement, comCerimonia: boolean) => {
       if (!pendentes.has(peca)) return;
@@ -301,28 +471,28 @@ const fotos = [
       },
       { rootMargin: "0px 0px -8% 0px", threshold: 0 },
     );
-    amostras.forEach((a) => olho.observe(a));
+    pecas.forEach((a) => olho.observe(a));
 
-    // A cartela anda alguns pixels contra a parede — o contrato do `--p` do
-    // painel-conceito, aqui só para a folha não parecer pintada no vinho. É
-    // também a segunda rede da varredura, pelo `onUpdate`: enquanto a cartela
-    // estiver em cena, todo quadro de rolagem passa por ali, e a `varrer` sai
-    // na primeira linha quando não há nada pendente.
+    // O conjunto anda alguns pixels contra a parede — o contrato do `--p` do
+    // painel-conceito, aqui só para as peças não parecerem pintadas no vinho.
+    // É também a segunda rede da varredura, pelo `onUpdate`: enquanto o
+    // conjunto estiver em cena, todo quadro de rolagem passa por ali, e a
+    // `varrer` sai na primeira linha quando não há nada pendente.
     const flutua = gsap.fromTo(
-      cartela,
+      conjunto,
       { "--p": -1 },
       {
         "--p": 1,
         ease: "none",
         scrollTrigger: {
-          trigger: cartela,
+          trigger: conjunto,
           start: "top bottom",
           end: "bottom top",
           scrub: true,
           invalidateOnRefresh: true,
           onUpdate: varrer,
           // Quem vem antes na página leva número maior, e prioridade maior
-          // remede primeiro. Esta seção é a última antes da LinhaCostura.
+          // remede primeiro.
           refreshPriority: prioridade.estampas,
         },
       },

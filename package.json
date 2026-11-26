@@ -18,6 +18,7 @@
     "extract:trendboard": "node scripts/extract-painel.mjs --out=trendboard --pular=16",
     "extract:tecidos": "node scripts/extract-tecidos.mjs",
     "extract:estampas": "node scripts/extract-estampas.mjs",
+    "extract:aplicacoes": "node scripts/extract-aplicacoes.mjs",
     "extract:estrelas": "node scripts/extract-estrelas-fundo.mjs",
     "conferir:estrelas": "node scripts/conferir-estrelas-fundo.mjs",
     "extract:croquis": "node scripts/extract-croquis.mjs"

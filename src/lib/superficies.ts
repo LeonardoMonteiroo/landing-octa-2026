@@ -22,8 +22,24 @@ const modsXadrezes = import.meta.glob<string>("../assets/estampas/*.png", {
   import: "default",
 });
 
-const faltou = (arquivo: string) =>
-  new Error(`superficies: falta src/assets/estampas/${arquivo}. Rode "npm run extract:estampas".`);
+const modsAplicacoes = import.meta.glob<{ default: ImageMetadata }>("../assets/estampas/aplicacoes/*.{webp,png}", {
+  eager: true,
+});
+
+const faltou = (arquivo: string, extrator = "extract:estampas") =>
+  new Error(`superficies: falta src/assets/estampas/${arquivo}. Rode "npm run ${extrator}".`);
+
+/**
+ * ImageMetadata da imagem de aplicação (src/data/estampas.ts, `aplicacoes`):
+ * os recortes de foto são WebP, a calça limpa é PNG com transparência.
+ */
+export function aplicacaoSuperficie(nome: string): ImageMetadata {
+  const mod =
+    modsAplicacoes[`../assets/estampas/aplicacoes/${nome}.webp`] ??
+    modsAplicacoes[`../assets/estampas/aplicacoes/${nome}.png`];
+  if (!mod) throw faltou(`aplicacoes/${nome}.(webp|png)`, "extract:aplicacoes");
+  return mod.default;
+}
 
 /** ImageMetadata do recorte de uma peça fotografada (retalho, bordado). */
 export function pecaSuperficie(nome: string): ImageMetadata {
